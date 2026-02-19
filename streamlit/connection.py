@@ -18,7 +18,8 @@ def get_connection():
 
     # Cloud mode: private key content stored directly in secrets
     if "private_key" in sf:
-        key_bytes = sf["private_key"].encode("utf-8")
+        key_str = sf["private_key"].replace("\\n", "\n")
+        key_bytes = key_str.encode("utf-8")
     # Local mode: private key as a file path
     else:
         key_path = Path(sf["private_key_path"])

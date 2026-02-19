@@ -53,9 +53,9 @@ st.divider()
 
 if not has_alerts:
     st.info(
-        "🔔 **No alerts triggered yet.** Alerts check every 5 minutes.\n\n"
-        "Make sure you've executed `deploy/04_alerts/01_alerts.sql` "
-        "and that the alerts are resumed (`ALTER ALERT ... RESUME`)."
+        "🔔 **No alerts triggered yet.** Alerts are checked every 5 minutes. "
+        "They will appear here when market conditions are met "
+        "(e.g. a ticker moves > 3%, a trend reversal, or unusual volume)."
     )
     st.stop()
 

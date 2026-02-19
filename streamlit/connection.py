@@ -1,6 +1,7 @@
 """
 SnowPulse - Shared Snowflake connection module
 Used by all Streamlit pages
+Supports both local (file path) and cloud (inline key) auth
 """
 
 import streamlit as st
@@ -14,9 +15,17 @@ from pathlib import Path
 def get_connection():
     """Create a cached Snowflake connection using RSA key-pair auth."""
     sf = st.secrets["snowflake"]
-    key_path = Path(sf["private_key_path"])
-    with open(key_path, "rb") as f:
-        p_key = serialization.load_pem_private_key(f.read(), password=None)
+
+    # Cloud mode: private key content stored directly in secrets
+    if "private_key" in sf:
+        key_bytes = sf["private_key"].encode("utf-8")
+    # Local mode: private key as a file path
+    else:
+        key_path = Path(sf["private_key_path"])
+        with open(key_path, "rb") as f:
+            key_bytes = f.read()
+
+    p_key = serialization.load_pem_private_key(key_bytes, password=None)
     pkb = p_key.private_bytes(
         encoding=serialization.Encoding.DER,
         format=serialization.PrivateFormat.PKCS8,

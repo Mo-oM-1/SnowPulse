@@ -520,6 +520,21 @@ st.markdown("""
 | `MACRO_OVERVIEW` | Gold | Final enriched table — stock prices + CPI + Treasury 10Y |
 """)
 
+st.subheader("📊 Macro Context Dashboard")
+
+st.markdown("""
+The **Macro Context** page provides the following visualizations:
+
+| Chart | Description |
+|---|---|
+| **Stock Price vs CPI Inflation** | Dual-axis chart comparing a ticker's monthly avg close price with CPI Year-over-Year inflation rate. Highlights how inflation trends correlate with stock movements. |
+| **Stock Price vs Treasury 10Y** | Dual-axis chart overlaying a ticker's price with the 10-Year Treasury yield index. Shows the impact of interest rate environment on tech valuations. |
+| **Mag7 Normalized vs Inflation** | All 7 tickers normalized to base 100, overlaid with CPI YoY inflation. Compares relative performance across the Magnificent Seven against the macro backdrop. |
+| **CPI Index & Inflation Rate** | Dedicated CPI panel — index evolution (area chart) and YoY inflation rate (bar chart with Fed 2% target line). Color-coded: green (<2%), yellow (2-3%), red (>3%). |
+| **Treasury 10Y Yield Index** | Area chart showing the quarterly evolution of the 10-Year Treasury yield. |
+| **Monthly Data Table** | Detailed table per ticker: monthly avg close, high, low, CPI index, inflation YoY %, Treasury 10Y. |
+""")
+
 with st.expander("Installation"):
     st.markdown("""
 1. Go to **Snowflake Marketplace** (left menu in Snowsight)

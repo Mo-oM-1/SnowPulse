@@ -5,9 +5,6 @@ Pipeline health, ingestion logs, alert history, and Dynamic Table status.
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import sys
 from pathlib import Path
 
@@ -151,36 +148,16 @@ with tab1:
             (logs["COMPONENT"].isin(component_filter))
         ]
 
-        # Log level distribution
-        col1, col2 = st.columns([1, 2])
+        # Log table
+        st.markdown(f"**{len(filtered_logs)}** logs matching filters")
+        st.dataframe(
+            filtered_logs[["LOGGED_AT", "LEVEL", "COMPONENT", "MESSAGE"]],
+            use_container_width=True,
+            hide_index=True
+        )
 
-        with col1:
-            level_counts = filtered_logs["LEVEL"].value_counts().reset_index()
-            level_counts.columns = ["Level", "Count"]
-            color_map = {"INFO": "#00D4AA", "WARNING": "#FFD93D", "ERROR": "#FF4444"}
-            fig_pie = px.pie(
-                level_counts, names="Level", values="Count",
-                color="Level", color_discrete_map=color_map,
-                title="Log Level Distribution"
-            )
-            fig_pie.update_layout(template="plotly_dark", height=300)
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-        with col2:
-            # Logs over time
-            time_logs = filtered_logs.copy()
-            time_logs["HOUR"] = pd.to_datetime(time_logs["LOGGED_AT"]).dt.floor("h")
-            hourly = time_logs.groupby(["HOUR", "LEVEL"]).size().reset_index(name="COUNT")
-            fig_time = px.bar(
-                hourly, x="HOUR", y="COUNT", color="LEVEL",
-                color_discrete_map=color_map,
-                title="Ingestion Activity (Hourly)"
-            )
-            fig_time.update_layout(template="plotly_dark", height=300, barmode="stack")
-            st.plotly_chart(fig_time, use_container_width=True)
-
-        # Log feed
-        st.markdown("#### Recent Logs")
+        # Expandable log details
+        st.markdown("#### Log Details")
         for _, row in filtered_logs.head(50).iterrows():
             level = row["LEVEL"]
             icon = "✅" if level == "INFO" else "⚠️" if level == "WARNING" else "❌"
@@ -196,32 +173,12 @@ with tab1:
 # ─── Tab 2: Alert History ────────────────────────────────────
 with tab2:
     if has_alerts:
-        # Alert stats
-        col1, col2 = st.columns(2)
-
-        with col1:
-            alert_by_type = alerts["ALERT_NAME"].value_counts().reset_index()
-            alert_by_type.columns = ["Alert", "Count"]
-            fig_alert_type = px.bar(
-                alert_by_type, x="Alert", y="Count",
-                color="Alert",
-                color_discrete_sequence=["#FF6B6B", "#FFD93D", "#4CC9F0"],
-                title="Alerts by Type"
-            )
-            fig_alert_type.update_layout(template="plotly_dark", height=300, showlegend=False)
-            st.plotly_chart(fig_alert_type, use_container_width=True)
-
-        with col2:
-            alert_by_ticker = alerts["TICKER"].value_counts().reset_index()
-            alert_by_ticker.columns = ["Ticker", "Count"]
-            fig_alert_ticker = px.bar(
-                alert_by_ticker, x="Ticker", y="Count",
-                color="Ticker",
-                color_discrete_sequence=px.colors.qualitative.Set2,
-                title="Alerts by Ticker"
-            )
-            fig_alert_ticker.update_layout(template="plotly_dark", height=300, showlegend=False)
-            st.plotly_chart(fig_alert_ticker, use_container_width=True)
+        # Alert table
+        st.dataframe(
+            alerts[["TRIGGERED_AT", "ALERT_NAME", "TICKER", "MESSAGE", "METRIC_VALUE"]],
+            use_container_width=True,
+            hide_index=True
+        )
 
         # Alert feed
         st.markdown("#### Recent Alerts")
@@ -258,18 +215,6 @@ with tab3:
 with tab4:
     if not row_counts.empty:
         st.markdown("#### Row Counts per Table")
-
-        fig_vol = px.bar(
-            row_counts, x="TABLE", y="ROW_COUNT",
-            color="ROW_COUNT",
-            color_continuous_scale=["#1a1a2e", "#00D4AA"],
-            title="Data Volume by Table"
-        )
-        fig_vol.update_layout(template="plotly_dark", height=400, showlegend=False)
-        fig_vol.update_coloraxes(showscale=False)
-        st.plotly_chart(fig_vol, use_container_width=True)
-
-        # Table
         st.dataframe(row_counts, use_container_width=True, hide_index=True)
     else:
         st.info("📦 **No data volume information available.**")

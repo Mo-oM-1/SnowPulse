@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
 from snowflake.ingest.streaming import StreamingIngestClient
+import snowflake.connector
+from cryptography.hazmat.primitives import serialization
 
 # ============================================
 # Configuration
@@ -56,10 +58,55 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 
 # ============================================
-# Snowpipe Streaming Client
+# Snowflake SQL Connection (for logging)
 # ============================================
 
 PROFILE_JSON_PATH = os.path.join(os.path.dirname(__file__), "profile.json")
+
+def get_snowflake_conn():
+    """Create a Snowflake SQL connector using profile.json + RSA key"""
+    with open(PROFILE_JSON_PATH) as f:
+        profile = json.load(f)
+
+    with open(profile["private_key_file"], "rb") as key_file:
+        p_key = serialization.load_pem_private_key(key_file.read(), password=None)
+
+    pkb = p_key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+
+    return snowflake.connector.connect(
+        account=profile["account"],
+        user=profile["user"],
+        private_key=pkb,
+        role=profile.get("role", "SNOWPULSE_ROLE"),
+        warehouse="SNOWPULSE_WH",
+        database="SNOWPULSE_DB",
+        schema="COMMON"
+    )
+
+sf_conn = None
+
+def sf_log(level, component, message, stack_trace=None):
+    """Insert a log entry into COMMON.PIPELINE_LOGS"""
+    global sf_conn
+    try:
+        if sf_conn is None or sf_conn.is_closed():
+            sf_conn = get_snowflake_conn()
+        sf_conn.cursor().execute(
+            "INSERT INTO COMMON.PIPELINE_LOGS (LEVEL, COMPONENT_NAME, MESSAGE, STACK_TRACE) "
+            "VALUES (%s, %s, %s, %s)",
+            (level, component, message[:4000], (stack_trace or "")[:16000])
+        )
+    except Exception as e:
+        log.warning(f"Failed to write to PIPELINE_LOGS: {e}")
+
+
+# ============================================
+# Snowpipe Streaming Client
+# ============================================
 
 
 def create_streaming_client(client_name, table_name):
@@ -141,6 +188,7 @@ class HistoricalAggPoller:
                     })
             except Exception as e:
                 log.error(f"HIST | Error fetching {ticker}: {e}")
+                sf_log("WARNING", "HistoricalAggPoller", f"Error fetching {ticker}: {e}")
 
         if rows:
             try:
@@ -152,9 +200,12 @@ class HistoricalAggPoller:
                 )
                 self.total_ingested += len(rows)
                 self.loaded = True
-                log.info(f"HIST | Ingested {len(rows)} daily bars (30 days) | Total: {self.total_ingested}")
+                msg = f"Ingested {len(rows)} daily bars (30 days) | Total: {self.total_ingested}"
+                log.info(f"HIST | {msg}")
+                sf_log("INFO", "HistoricalAggPoller", msg)
             except Exception as e:
                 log.error(f"HIST | Ingest error: {e}")
+                sf_log("ERROR", "HistoricalAggPoller", f"Ingest error: {e}", str(e))
 
     def run(self):
         """Load once, then idle"""
@@ -207,6 +258,7 @@ class AggregatePoller:
                     })
             except Exception as e:
                 log.error(f"AGG | Error fetching {ticker}: {e}")
+                sf_log("WARNING", "AggregatePoller", f"Error fetching {ticker}: {e}")
 
         if rows:
             try:
@@ -217,9 +269,12 @@ class AggregatePoller:
                     end_offset_token=str(self.offset)
                 )
                 self.total_ingested += len(rows)
-                log.info(f"AGG | Ingested {len(rows)} bars | Total: {self.total_ingested}")
+                msg = f"Ingested {len(rows)} bars | Total: {self.total_ingested}"
+                log.info(f"AGG | {msg}")
+                sf_log("INFO", "AggregatePoller", msg)
             except Exception as e:
                 log.error(f"AGG | Ingest error: {e}")
+                sf_log("ERROR", "AggregatePoller", f"Ingest error: {e}", str(e))
 
     def run(self):
         """Polling loop"""
@@ -281,6 +336,7 @@ class NewsPoller:
 
         except Exception as e:
             log.error(f"NEWS | Error fetching: {e}")
+            sf_log("WARNING", "NewsPoller", f"Error fetching news: {e}")
 
         if rows:
             try:
@@ -291,9 +347,12 @@ class NewsPoller:
                     end_offset_token=str(self.offset)
                 )
                 self.total_ingested += len(rows)
-                log.info(f"NEWS | Ingested {len(rows)} articles | Total: {self.total_ingested}")
+                msg = f"Ingested {len(rows)} articles | Total: {self.total_ingested}"
+                log.info(f"NEWS | {msg}")
+                sf_log("INFO", "NewsPoller", msg)
             except Exception as e:
                 log.error(f"NEWS | Ingest error: {e}")
+                sf_log("ERROR", "NewsPoller", f"Ingest error: {e}", str(e))
 
     def run(self):
         """Polling loop"""
@@ -343,6 +402,7 @@ def main():
     news_thread.start()
 
     log.info("All pollers started. Press Ctrl+C to stop.")
+    sf_log("INFO", "Main", f"SnowPulse started — {len(TICKERS)} tickers, 3 pollers")
 
     # Keep main thread alive
     try:
@@ -356,6 +416,9 @@ def main():
         hist_poller.close()
         agg_poller.close()
         news_poller.close()
+        sf_log("INFO", "Main", "SnowPulse stopped")
+        if sf_conn and not sf_conn.is_closed():
+            sf_conn.close()
         log.info("SnowPulse stopped.")
 
 

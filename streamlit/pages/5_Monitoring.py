@@ -68,8 +68,22 @@ def load_row_counts():
     return pd.DataFrame(conn.cursor().execute(query).fetchall(),
                         columns=["TABLE", "ROW_COUNT"])
 
+# ─────────────────────────────────────────────────────────────
+# Display-friendly component names
+# ─────────────────────────────────────────────────────────────
+COMPONENT_LABELS = {
+    "Main": "Startup / Shutdown",
+    "HistoricalAggPoller": "Historical Loader (30-day backfill)",
+    "AggregatePoller": "Daily Aggregates",
+    "NewsPoller": "News Ingestion",
+}
+
+def friendly_component(name):
+    return COMPONENT_LABELS.get(name, name)
+
 try:
     logs = load_pipeline_logs()
+    logs["COMPONENT"] = logs["COMPONENT"].apply(friendly_component)
     alerts = load_alert_log()
     has_logs = not logs.empty
     has_alerts = not alerts.empty

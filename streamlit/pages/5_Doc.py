@@ -481,6 +481,57 @@ st.markdown("""
 st.divider()
 
 # ─────────────────────────────────────────────────────────────
+# Snowflake Marketplace
+# ─────────────────────────────────────────────────────────────
+st.header("🛒 Snowflake Marketplace — Data Enrichment")
+
+st.markdown("""
+### What is Snowflake Marketplace?
+
+**Snowflake Marketplace** allows you to access live, ready-to-query datasets shared by data providers — directly in your Snowflake account, **with zero ingestion or ETL**. The data stays in the provider's account and is accessed via secure data sharing.
+
+### Dataset Used: Snowflake Public Data (Free)
+
+We use the **Snowflake Public Data (Free)** dataset (90+ public domain sources) to enrich our Magnificent Seven stock data with macroeconomic indicators:
+
+| Indicator | Source | Frequency | Usage |
+|---|---|---|---|
+| **CPI (Consumer Price Index)** | Bureau of Labor Statistics | Monthly | Inflation tracking — correlate with stock performance |
+| **Treasury 10Y Yield** | Federal Reserve | Quarterly | Interest rate environment — impact on tech valuations |
+| **Stock Prices (Nasdaq)** | Cybersyn / Databento | Daily | Extended price history + validation of ingested data |
+
+### Why This Matters
+
+- **Data Enrichment**: Cross-referencing real-time stock data with macro indicators
+- **No ETL needed**: Marketplace data is available instantly via shared views
+- **Zero storage cost**: Data lives in the provider's account
+- **Portfolio value**: Demonstrates ability to integrate multiple data sources
+""")
+
+st.subheader("📌 Dynamic Tables")
+
+st.markdown("""
+| Dynamic Table | Layer | Description |
+|---|---|---|
+| `MACRO_CPI` | Analytics | Monthly CPI index with MoM and YoY change (%) |
+| `MACRO_TREASURY_10Y` | Analytics | Quarterly 10-Year Treasury yield with QoQ change |
+| `MARKETPLACE_STOCK_PRICES` | Analytics | Mag7 daily close, high, low, volume from Nasdaq |
+| `MACRO_STOCK_MONTHLY` | Analytics | Monthly average close per ticker (for JOIN with CPI) |
+| `MACRO_OVERVIEW` | Gold | Final enriched table — stock prices + CPI + Treasury 10Y |
+""")
+
+with st.expander("Installation"):
+    st.markdown("""
+1. Go to **Snowflake Marketplace** (left menu in Snowsight)
+2. Search for **"Snowflake Public Data"** (provider: Snowflake Public Data Products)
+3. Click **Get** → name the database `Snowflake_FINANCE__ECONOMICS`
+4. Grant access to `SNOWPULSE_ROLE`
+5. Execute `deploy/06_marketplace/01_macro_enrichment.sql`
+""")
+
+st.divider()
+
+# ─────────────────────────────────────────────────────────────
 # Glossary
 # ─────────────────────────────────────────────────────────────
 st.header("📚 Glossary — Financial Terms")
@@ -506,6 +557,11 @@ st.markdown("""
 | **Trading Day** | A day when the stock market is open for trading (Monday to Friday, excluding US public holidays). Weekends and holidays have no price data. |
 | **Previous Close** | The closing price of the most recent completed trading session. Used as a reference point to calculate the current day's performance. |
 | **Aggregate Bar** | A summary of all trades within a specific time window (e.g. 1 day). Contains the OHLCV data for that period. This project uses daily aggregate bars. |
+| **CPI (Consumer Price Index)** | A measure of the average change in prices paid by consumers for a basket of goods and services. Used as the primary indicator of inflation. Published monthly by the Bureau of Labor Statistics. |
+| **YoY (Year-over-Year)** | A comparison of a statistic from one period to the same period in the previous year. For example, CPI YoY measures inflation by comparing this month's CPI to the same month last year. |
+| **Treasury 10Y Yield** | The return on the US government 10-year bond. A key benchmark for interest rates — when it rises, borrowing costs increase, which typically puts pressure on growth/tech stock valuations. |
+| **Federal Reserve (Fed)** | The central bank of the United States. Sets monetary policy including the Federal Funds Rate. Its decisions on interest rates directly impact stock markets, especially tech stocks. |
+| **Inflation** | The rate at which the general level of prices for goods and services rises, eroding purchasing power. The Fed targets approximately 2% annual inflation. |
 """)
 
 st.divider()

@@ -94,14 +94,18 @@ df_ticker = df_macro[df_macro["TICKER"] == selected_ticker].copy()
 # ─────────────────────────────────────────────────────────────
 st.subheader(f"📊 {selected_ticker} — Latest Macro Snapshot")
 
-latest = df_ticker.iloc[-1] if len(df_ticker) > 0 else None
+# Use the most recent month that has macro data (CPI), not the absolute latest
+latest_macro = df_ticker[df_ticker["CPI_INDEX"].notna()]
+latest = latest_macro.iloc[-1] if len(latest_macro) > 0 else (df_ticker.iloc[-1] if len(df_ticker) > 0 else None)
 
 if latest is not None:
     col1, col2, col3, col4 = st.columns(4)
 
+    month_label = str(latest['MONTH'])[:7] if pd.notna(latest.get('MONTH')) else ""
+
     with col1:
         st.metric(
-            "Avg Close (Last Month)",
+            f"Avg Close ({month_label})",
             f"${latest['AVG_CLOSE']:,.2f}" if pd.notna(latest['AVG_CLOSE']) else "N/A"
         )
     with col2:

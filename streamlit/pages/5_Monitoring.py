@@ -1,6 +1,6 @@
 """
 SnowPulse — Monitoring Page
-Pipeline health, ingestion logs, alert history, and Dynamic Table status.
+Pipeline health, data quality, ingestion logs, alert history, and Dynamic Table status.
 """
 
 import streamlit as st
@@ -16,7 +16,7 @@ st.set_page_config(page_title="Monitoring | SnowPulse", page_icon="🔧", layout
 conn = get_connection()
 
 st.title("🔧 Pipeline Monitoring")
-st.caption("Real-time observability — ingestion logs, alert history, and system health")
+st.caption("Real-time observability — data quality, ingestion logs, alert history, and system health")
 st.divider()
 
 # ─────────────────────────────────────────────────────────────
@@ -68,6 +68,34 @@ def load_row_counts():
     return pd.DataFrame(conn.cursor().execute(query).fetchall(),
                         columns=["TABLE", "ROW_COUNT"])
 
+@st.cache_data(ttl=60)
+def load_quality_summary():
+    query = """
+        SELECT CHECKED_AT, CHECK_NAME, TABLE_NAME, STATUS, METRIC_VALUE, THRESHOLD, MESSAGE
+        FROM COMMON.DATA_QUALITY_SUMMARY
+        ORDER BY
+            CASE STATUS WHEN 'FAIL' THEN 1 WHEN 'WARN' THEN 2 ELSE 3 END,
+            CHECK_NAME
+    """
+    return pd.DataFrame(conn.cursor().execute(query).fetchall(),
+                        columns=["CHECKED_AT", "CHECK", "TABLE", "STATUS", "VALUE", "THRESHOLD", "MESSAGE"])
+
+@st.cache_data(ttl=300)
+def load_dmf_results():
+    query = """
+        SELECT
+            MEASUREMENT_TIME,
+            TABLE_SCHEMA || '.' || TABLE_NAME AS TABLE_NAME,
+            METRIC_NAME,
+            VALUE
+        FROM SNOWFLAKE.LOCAL.DATA_QUALITY_MONITORING_RESULTS
+        WHERE TABLE_DATABASE = 'SNOWPULSE_DB'
+        ORDER BY MEASUREMENT_TIME DESC
+        LIMIT 50
+    """
+    return pd.DataFrame(conn.cursor().execute(query).fetchall(),
+                        columns=["MEASURED_AT", "TABLE", "METRIC", "VALUE"])
+
 # ─────────────────────────────────────────────────────────────
 # Display-friendly component names
 # ─────────────────────────────────────────────────────────────
@@ -105,12 +133,26 @@ try:
 except Exception:
     row_counts = pd.DataFrame()
 
+try:
+    quality = load_quality_summary()
+    has_quality = not quality.empty
+except Exception:
+    quality = pd.DataFrame()
+    has_quality = False
+
+try:
+    dmf_results = load_dmf_results()
+    has_dmf = not dmf_results.empty
+except Exception:
+    dmf_results = pd.DataFrame()
+    has_dmf = False
+
 # ─────────────────────────────────────────────────────────────
 # KPI Cards
 # ─────────────────────────────────────────────────────────────
 st.subheader("📊 System Overview")
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     total_logs = len(logs) if has_logs else 0
@@ -126,6 +168,15 @@ with col3:
     st.metric("Alerts Triggered", f"{total_alerts}")
 
 with col4:
+    if has_quality:
+        passes = len(quality[quality["STATUS"] == "PASS"])
+        total_checks = len(quality)
+        score = round(passes / total_checks * 100) if total_checks > 0 else 0
+        st.metric("Quality Score", f"{score}%")
+    else:
+        st.metric("Quality Score", "N/A")
+
+with col5:
     if has_logs and len(logs) > 0:
         last_log = logs["LOGGED_AT"].iloc[0]
         st.metric("Last Ingestion", str(last_log)[:16])
@@ -137,10 +188,55 @@ st.divider()
 # ─────────────────────────────────────────────────────────────
 # Tabs
 # ─────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs(["📋 Pipeline Logs", "🚨 Alert History", "⚡ Dynamic Tables", "📦 Data Volume"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🔍 Data Quality", "📋 Pipeline Logs", "🚨 Alert History",
+    "⚡ Dynamic Tables", "📦 Data Volume"
+])
 
-# ─── Tab 1: Pipeline Logs ────────────────────────────────────
+# ─── Tab 1: Data Quality ──────────────────────────────────────
 with tab1:
+    if has_quality:
+        # Quality KPIs
+        passes = len(quality[quality["STATUS"] == "PASS"])
+        warns = len(quality[quality["STATUS"] == "WARN"])
+        fails = len(quality[quality["STATUS"] == "FAIL"])
+
+        cq1, cq2, cq3 = st.columns(3)
+        with cq1:
+            st.metric("Passed", f"{passes}", delta=f"{passes} checks", delta_color="normal")
+        with cq2:
+            st.metric("Warnings", f"{warns}",
+                      delta=None if warns == 0 else f"{warns} warnings", delta_color="off")
+        with cq3:
+            st.metric("Failures", f"{fails}",
+                      delta=None if fails == 0 else f"{fails} issues", delta_color="inverse")
+
+        # Latest checks table
+        st.markdown("#### Latest Quality Checks")
+        display = quality.copy()
+        display["STATUS"] = display["STATUS"].map({
+            "PASS": "🟢 PASS", "WARN": "🟡 WARN", "FAIL": "🔴 FAIL"
+        })
+        st.dataframe(
+            display[["CHECKED_AT", "CHECK", "TABLE", "STATUS", "MESSAGE"]],
+            use_container_width=True,
+            hide_index=True
+        )
+
+        # DMF results
+        if has_dmf:
+            st.markdown("#### Data Metric Functions (DMFs)")
+            st.caption("Automated metrics attached to tables — computed by Snowflake every 60 minutes")
+            st.dataframe(dmf_results, use_container_width=True, hide_index=True)
+    else:
+        st.info(
+            "🔍 **No quality checks yet.** Run the data quality SQL script to create the Task, "
+            "then checks will appear here after the first hourly execution.\n\n"
+            "You can also run manually: `CALL COMMON.SP_DATA_QUALITY_CHECK();`"
+        )
+
+# ─── Tab 2: Pipeline Logs ────────────────────────────────────
+with tab2:
     if has_logs:
         # Filters
         col_f1, col_f2 = st.columns(2)
@@ -184,8 +280,8 @@ with tab1:
     else:
         st.info("📋 **No pipeline logs yet.** Logs will appear here once the ingestion script starts running.")
 
-# ─── Tab 2: Alert History ────────────────────────────────────
-with tab2:
+# ─── Tab 3: Alert History ────────────────────────────────────
+with tab3:
     if has_alerts:
         # Alert table
         st.dataframe(
@@ -210,8 +306,8 @@ with tab2:
             "They will appear here when market conditions are met."
         )
 
-# ─── Tab 3: Dynamic Tables ──────────────────────────────────
-with tab3:
+# ─── Tab 4: Dynamic Tables ──────────────────────────────────
+with tab4:
     if has_dt:
         st.markdown("#### Dynamic Table Status")
 
@@ -225,8 +321,8 @@ with tab3:
     else:
         st.info("⚡ **No Dynamic Tables found.** Execute the SQL deploy scripts to create them.")
 
-# ─── Tab 4: Data Volume ─────────────────────────────────────
-with tab4:
+# ─── Tab 5: Data Volume ─────────────────────────────────────
+with tab5:
     if not row_counts.empty:
         st.markdown("#### Row Counts per Table")
         st.dataframe(row_counts, use_container_width=True, hide_index=True)
@@ -238,6 +334,6 @@ with tab4:
 # ─────────────────────────────────────────────────────────────
 st.divider()
 st.caption(
-    "🔧 SnowPulse Monitoring | Pipeline Logs: COMMON.PIPELINE_LOGS | "
-    "Alert History: COMMON.ALERT_LOG | Auto-refresh: 60s cache"
+    "🔧 SnowPulse Monitoring | Quality: COMMON.DATA_QUALITY_SUMMARY | "
+    "Logs: COMMON.PIPELINE_LOGS | Alerts: COMMON.ALERT_LOG | Auto-refresh: 60s cache"
 )

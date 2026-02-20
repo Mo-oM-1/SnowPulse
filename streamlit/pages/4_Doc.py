@@ -511,6 +511,141 @@ st.markdown("""
 st.divider()
 
 # ─────────────────────────────────────────────────────────────
+# EC2 Deployment
+# ─────────────────────────────────────────────────────────────
+st.header("☁️ Production Deployment — AWS EC2")
+
+st.markdown("""
+### Why EC2?
+
+The Snowpipe Streaming SDK is a **client-side** library — it runs on a machine, not inside Snowflake.
+To keep the pipeline running 24/7 without relying on a local computer, we deploy the ingestion script on an **AWS EC2** instance.
+
+### Architecture
+
+```
+AWS EC2 (t2.micro)
+├── Python 3.11
+├── streaming/stream_to_snowflake.py   ← runs as systemd service
+├── .env                               ← API key
+├── streaming/profile.json             ← Snowflake connection
+└── ~/.ssh/snowflake_key.p8            ← RSA private key
+```
+
+### Setup Procedure
+""")
+
+with st.expander("1 — Launch an EC2 Instance"):
+    st.markdown("""
+- **AMI**: Amazon Linux 2023
+- **Instance type**: `t2.micro` (free tier eligible)
+- **Security group**: Allow SSH (port 22) from your IP
+- **Key pair**: Create or use an existing `.pem` key
+- Save the `.pem` file locally (e.g. `~/.ssh/snowpulse-key.pem`)
+""")
+    st.code("""
+# Set proper permissions on the key
+chmod 400 ~/.ssh/snowpulse-key.pem
+
+# Connect via SSH
+ssh -i ~/.ssh/snowpulse-key.pem ec2-user@<EC2_PUBLIC_IP>
+    """, language="bash")
+
+with st.expander("2 — Install Dependencies"):
+    st.code("""
+# Update packages
+sudo dnf update -y
+
+# Install Python 3.11 and pip
+sudo dnf install -y python3.11 python3.11-pip git
+
+# Clone the repository
+git clone https://github.com/<your-user>/SnowPulse.git
+cd SnowPulse
+
+# Install Python dependencies
+pip3.11 install -r streaming/requirements.txt
+    """, language="bash")
+
+with st.expander("3 — Copy Secrets to EC2"):
+    st.markdown("From your **local machine**, copy the required secret files:")
+    st.code("""
+# Copy .env (API key)
+scp -i ~/.ssh/snowpulse-key.pem .env ec2-user@<EC2_PUBLIC_IP>:~/SnowPulse/.env
+
+# Copy Snowflake profile
+scp -i ~/.ssh/snowpulse-key.pem streaming/profile.json ec2-user@<EC2_PUBLIC_IP>:~/SnowPulse/streaming/profile.json
+
+# Copy RSA private key
+scp -i ~/.ssh/snowpulse-key.pem ~/.ssh/snowflake_key.p8 ec2-user@<EC2_PUBLIC_IP>:~/.ssh/snowflake_key.p8
+    """, language="bash")
+    st.markdown("""
+**Important:** Update `profile.json` on EC2 so that `private_key_file` points to the EC2 path:
+```json
+"private_key_file": "/home/ec2-user/.ssh/snowflake_key.p8"
+```
+""")
+
+with st.expander("4 — Create a systemd Service"):
+    st.markdown("Create a systemd unit file so the script starts automatically and restarts on failure:")
+    st.code("""
+sudo tee /etc/systemd/system/snowpulse.service > /dev/null <<'EOF'
+[Unit]
+Description=SnowPulse - Real-Time Market Data Streamer
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/SnowPulse
+ExecStart=/usr/bin/python3.11 streaming/stream_to_snowflake.py
+Restart=always
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd, enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable snowpulse
+sudo systemctl start snowpulse
+    """, language="bash")
+
+with st.expander("5 — Monitor & Manage the Service"):
+    st.code("""
+# Check service status
+sudo systemctl status snowpulse
+
+# View live logs
+sudo journalctl -u snowpulse -f
+
+# View last 50 log lines
+sudo journalctl -u snowpulse -n 50
+
+# Restart after a code update
+cd ~/SnowPulse && git pull
+sudo systemctl restart snowpulse
+
+# Stop the service
+sudo systemctl stop snowpulse
+    """, language="bash")
+
+st.markdown("""
+### Key Features
+
+| Feature | Detail |
+|---|---|
+| **Auto-restart** | `Restart=always` + `RestartSec=30` — if the script crashes, systemd restarts it after 30 seconds |
+| **Boot persistence** | `systemctl enable` — the service starts automatically when the EC2 reboots |
+| **Log management** | All logs go to journald — queryable with `journalctl` |
+| **Cost** | `t2.micro` is free tier eligible (750 hrs/month for the first 12 months) |
+""")
+
+st.divider()
+
+# ─────────────────────────────────────────────────────────────
 # Footer
 # ─────────────────────────────────────────────────────────────
 st.caption(

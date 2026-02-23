@@ -8,8 +8,13 @@
 |---|---|
 | **Snowpipe Streaming** | Real-time ingestion from Massive (Polygon.io) REST API via Python SDK |
 | **Dynamic Tables** | Declarative transformations with automatic cascade refresh (1 min lag) |
-| **Snowflake Alerts** | Automated market condition monitoring (big moves, trend changes, high volume) |
+| **Snowflake Alerts** | Automated market + data quality monitoring |
 | **Cortex LLM** | AI-powered sentiment analysis on financial news (SENTIMENT + SUMMARIZE) |
+| **Snowflake Marketplace** | Macro enrichment — CPI, Treasury 10Y, extended stock prices |
+| **Data Metric Functions** | Automated quality metrics (negative prices, OHLCV violations, missing tickers) |
+| **Tags** | Governance — classify tables by domain, layer, and freshness SLA |
+| **Streams** | CDC (Change Data Capture) — append-only tracking on RAW tables |
+| **Stored Procedure + Task** | 10 quality checks running every 60 minutes |
 | **VARIANT** | Schema-on-read for semi-structured JSON market data |
 | **External Access Integration** | Secure outbound API calls with Network Rules + Secrets |
 | **RSA Key-pair Auth** | Passwordless authentication for Snowpipe Streaming SDK |
@@ -17,53 +22,57 @@
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────┐
-│  Massive (Polygon.io)   │
-│      REST API           │
-└───────────┬─────────────┘
-            │ Python (REST polling)
-            ▼
-┌─────────────────────────┐
-│  Snowpipe Streaming SDK │
-│  append_rows() → VARIANT│
-└───────────┬─────────────┘
+┌──────────────────────────┐     ┌──────────────────────────┐
+│  Massive (Polygon.io)    │     │  Snowflake Marketplace   │
+│      REST API            │     │  (CPI, Treasury, Stocks) │
+└───────────┬──────────────┘     └───────────┬──────────────┘
+            │ Python (REST polling)           │ Secure Data Sharing
+            ▼                                 │
+┌──────────────────────────┐                  │
+│  Snowpipe Streaming SDK  │                  │
+│  append_rows() → VARIANT │                  │
+└───────────┬──────────────┘                  │
+            │                                 │
+            ▼                                 │
+┌─────────────────────────────────────────────┼──────────────┐
+│                    SNOWPULSE_DB             │               │
+│                                             │               │
+│  ┌─── RAW ──────────────┐                  │               │
+│  │ RAW_TRADES           │──→ Streams (CDC) │               │
+│  │ RAW_AGGREGATES       │                  │               │
+│  │ RAW_NEWS             │                  │               │
+│  └──────────┬───────────┘                  │               │
+│             │ Dynamic Tables               │               │
+│             ▼                              ▼               │
+│  ┌─── ANALYTICS ────────────────────────────────┐          │
+│  │ DAILY_OHLCV (deduplicated with QUALIFY)      │          │
+│  │ DAILY_RETURNS · MOVING_AVERAGES              │          │
+│  │ NEWS_FLATTENED · NEWS_SENTIMENT (Cortex LLM) │          │
+│  │ MACRO_CPI · MACRO_TREASURY_10Y               │          │
+│  │ MARKETPLACE_STOCK_PRICES · MACRO_STOCK_MONTHLY│         │
+│  │ + DMFs (automated quality metrics)           │          │
+│  └──────────┬───────────────────────────────────┘          │
+│             │ Dynamic Tables                                │
+│             ▼                                               │
+│  ┌─── GOLD ──────────────────────┐                         │
+│  │ TICKER_SUMMARY                │                         │
+│  │ SENTIMENT_SUMMARY             │                         │
+│  │ MACRO_OVERVIEW                │                         │
+│  └──────────┬────────────────────┘                         │
+│             │                                               │
+│  ┌─── COMMON ─────────────────────────────┐                │
+│  │ ALERT_LOG · PIPELINE_LOGS              │                │
+│  │ DATA_QUALITY_LOG · DATA_QUALITY_SUMMARY│                │
+│  │ Tags (governance) · SP + Task + Alert  │                │
+│  └────────────────────────────────────────┘                │
+└─────────────────────────────────────────────────────────────┘
             │
             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    SNOWPULSE_DB                              │
-│                                                              │
-│  ┌─── RAW ──────────────┐                                   │
-│  │ RAW_TRADES           │                                    │
-│  │ RAW_AGGREGATES       │──── Dynamic Tables (1 min lag)     │
-│  │ RAW_NEWS             │           │                        │
-│  └──────────────────────┘           ▼                        │
-│                           ┌─── ANALYTICS ──────────┐         │
-│                           │ DAILY_OHLCV            │         │
-│                           │ DAILY_RETURNS          │         │
-│                           │ MOVING_AVERAGES        │         │
-│                           │ NEWS_FLATTENED         │         │
-│                           │ NEWS_TICKERS           │         │
-│                           │ NEWS_SENTIMENT (Cortex)│         │
-│                           └─────────┬──────────────┘         │
-│                                     │                        │
-│                                     ▼                        │
-│                           ┌─── GOLD ──────────────┐          │
-│                           │ TICKER_SUMMARY        │          │
-│                           │ SENTIMENT_SUMMARY     │          │
-│                           └─────────┬─────────────┘          │
-│                                     │                        │
-│  ┌─── COMMON ──────────┐           │                        │
-│  │ ALERT_LOG           │◄── Alerts (5 min schedule)          │
-│  │ PIPELINE_LOGS       │                                     │
-│  └─────────────────────┘                                     │
-└──────────────────────────────────────────────────────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│   Streamlit Dashboard   │
-│  Home │ Analysis │ News │
-│  Alerts │ Doc           │
-└─────────────────────────┘
+┌──────────────────────────────────┐
+│   Streamlit Dashboard (6 pages)  │
+│  Home · Analysis · News · Alerts │
+│  Macro · Monitoring · Doc        │
+└──────────────────────────────────┘
 ```
 
 ## 📊 Dashboard Pages
@@ -74,7 +83,23 @@
 | **Technical Analysis** | Candlestick charts with SMA overlay, volume bars, daily returns, heatmap |
 | **News & Sentiment** | Cortex-powered sentiment scores, distribution charts, article feed |
 | **Alerts** | Alert timeline, statistics by type/ticker, real-time alert feed |
+| **Macro Context** | Stock prices vs CPI inflation, Treasury 10Y yield, Mag7 normalized performance |
+| **Monitoring** | Data quality checks, pipeline logs, alert history, Dynamic Table status, data volume |
 | **Documentation** | Pipeline architecture, code examples, financial glossary |
+
+## 🔍 Data Quality Layer
+
+**7 Snowflake features** for automated data quality and governance:
+
+| Feature | Object | Purpose |
+|---|---|---|
+| **Tags** | `DATA_DOMAIN`, `DATA_LAYER`, `FRESHNESS_SLA` | Classify every table by domain, layer, and freshness SLA |
+| **DMFs** | 3 Data Metric Functions | Automated metrics on DAILY_OHLCV (negative prices, OHLCV violations, missing tickers) |
+| **Streams** | 3 append-only streams | CDC on RAW tables — track new ingestions between quality checks |
+| **Stored Procedure** | `SP_DATA_QUALITY_CHECK()` | 10 quality checks: freshness, completeness, validity, consistency, duplicates, volume |
+| **Task** | `TASK_DATA_QUALITY_CHECK` | Runs the SP every 60 minutes |
+| **Alert** | `ALERT_DATA_QUALITY_FAIL` | Fires on quality failures — writes to ALERT_LOG |
+| **Dynamic Table** | `DATA_QUALITY_SUMMARY` | Latest quality status per check — displayed on Monitoring page |
 
 ## 🚀 Quick Start
 
@@ -130,11 +155,13 @@ database = "SNOWPULSE_DB"
 Execute SQL files **in order** in Snowsight:
 
 ```
-deploy/01_setup/01_setup.sql          # Database, schemas, warehouse, role
-deploy/02_raw/01_tables.sql           # RAW tables (VARIANT)
-deploy/03_dynamic_tables/01_dynamic_tables.sql  # Analytics + Gold tables
-deploy/04_alerts/01_alerts.sql        # Alert rules + log table
-deploy/05_cortex/01_cortex_sentiment.sql  # Cortex sentiment analysis
+deploy/01_setup/01_setup.sql                    # Database, schemas, warehouse, role
+deploy/02_raw/01_tables.sql                     # RAW tables (VARIANT)
+deploy/03_dynamic_tables/01_dynamic_tables.sql  # Analytics + Gold DTs
+deploy/04_alerts/01_alerts.sql                  # Market alert rules + log table
+deploy/05_cortex/01_cortex_sentiment.sql        # Cortex LLM sentiment analysis
+deploy/06_marketplace/01_macro_enrichment.sql   # Marketplace macro data
+deploy/07_data_quality/01_data_quality.sql      # Tags, DMFs, Streams, SP, Task, Alert, DT
 ```
 
 Then manually create the API secret:
@@ -162,30 +189,49 @@ streamlit run streamlit/app.py
 
 Open http://localhost:8501
 
+## ☁️ Production Deployment (AWS EC2)
+
+The ingestion script runs 24/7 on an AWS EC2 `t2.micro` instance as a systemd service:
+
+```
+AWS EC2 (t2.micro — free tier eligible)
+├── Python 3.11
+├── streaming/stream_to_snowflake.py  ← runs as systemd service
+├── .env                              ← API key
+├── streaming/profile.json            ← Snowflake connection
+└── ~/.ssh/snowflake_key.p8           ← RSA private key
+```
+
+Key features: auto-restart on failure (`RestartSec=30`), boot persistence (`systemctl enable`), log management via `journalctl`.
+
 ## 📁 Project Structure
 
 ```
 snowpulse/
 ├── deploy/
-│   ├── 01_setup/01_setup.sql              # Infrastructure
-│   ├── 02_raw/01_tables.sql               # RAW tables
-│   ├── 03_dynamic_tables/01_dynamic_tables.sql  # ANALYTICS + GOLD
-│   ├── 04_alerts/01_alerts.sql            # Alert rules
-│   └── 05_cortex/01_cortex_sentiment.sql  # Cortex LLM
+│   ├── 01_setup/01_setup.sql                    # Infrastructure
+│   ├── 02_raw/01_tables.sql                     # RAW tables
+│   ├── 03_dynamic_tables/01_dynamic_tables.sql  # ANALYTICS + GOLD DTs
+│   ├── 04_alerts/01_alerts.sql                  # Market alert rules
+│   ├── 05_cortex/01_cortex_sentiment.sql        # Cortex LLM
+│   ├── 06_marketplace/01_macro_enrichment.sql   # Marketplace macro data
+│   └── 07_data_quality/01_data_quality.sql      # Quality + Governance
 ├── streaming/
-│   ├── stream_to_snowflake.py             # Ingestion script
-│   ├── profile.json                       # Snowflake auth (gitignored)
+│   ├── stream_to_snowflake.py                   # Ingestion script (3 pollers)
+│   ├── profile.json                             # Snowflake auth (gitignored)
 │   └── requirements.txt
 ├── streamlit/
-│   ├── app.py                             # Home page
-│   ├── connection.py                      # Shared SF connection
+│   ├── app.py                                   # Home page
+│   ├── connection.py                            # Shared SF connection
 │   ├── requirements.txt
 │   └── pages/
-│       ├── 1_Doc.py                       # Documentation
-│       ├── 2_Technical_Analysis.py        # Candlestick + SMA
-│       ├── 3_News_Sentiment.py            # Cortex sentiment
-│       └── 4_Alerts.py                    # Alert monitor
-├── .env.example                           # Environment template
+│       ├── 1_Technical_Analysis.py              # Candlestick + SMA
+│       ├── 2_News_Sentiment.py                  # Cortex sentiment
+│       ├── 3_Alerts.py                          # Alert monitor
+│       ├── 4_Macro_Context.py                   # Macro enrichment
+│       ├── 5_Monitoring.py                      # Pipeline health + quality
+│       └── 6_Doc.py                             # Documentation
+├── .env.example                                 # Environment template
 ├── .gitignore
 └── README.md
 ```
@@ -207,6 +253,10 @@ snowpulse/
 | Dynamic Tables instead of Tasks | Declarative, less code, automatic cascade |
 | TARGET_LAG = 1 minute | Near real-time without overconsumption |
 | Cortex SENTIMENT() + SUMMARIZE() | Native AI, no external ML pipeline needed |
+| QUALIFY ROW_NUMBER() deduplication | Handles duplicate backfills at the DT level |
+| 7-feature data quality layer | Maximizes Snowflake native features for governance |
+| Snowflake Marketplace enrichment | Zero-ETL macro data (CPI, Treasury) |
+| EC2 t2.micro + systemd | 24/7 ingestion, auto-restart, free tier eligible |
 
 ## 📜 License
 
@@ -214,4 +264,4 @@ This project is built for educational and portfolio purposes.
 
 ---
 
-Built with ❄️ Snowflake + 🐍 Python + 📊 Streamlit
+Built with ❄️ Snowflake + 🐍 Python + 📊 Streamlit + ☁️ AWS EC2

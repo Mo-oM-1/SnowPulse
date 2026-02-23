@@ -14,7 +14,7 @@ USE WAREHOUSE SNOWPULSE_WH;
 CREATE OR REPLACE DYNAMIC TABLE ANALYTICS.DAILY_OHLCV
     TARGET_LAG = '1 minute'
     WAREHOUSE = SNOWPULSE_WH
-    COMMENT = 'Daily OHLCV bars - flattened from RAW_TRADES via Snowpipe Streaming'
+    COMMENT = 'Daily OHLCV bars - flattened from RAW_TRADES via Snowpipe Streaming (deduplicated)'
 AS
 SELECT
     RECORD_CONTENT:ticker::STRING           AS TICKER,
@@ -29,7 +29,8 @@ SELECT
     RECORD_CONTENT:vw::FLOAT                AS VWAP,
     RECORD_CONTENT:n::NUMBER                AS NUM_TRANSACTIONS,
     RECORD_METADATA:ingested_at::TIMESTAMP_NTZ AS INGESTED_AT
-FROM RAW.RAW_TRADES;
+FROM RAW.RAW_TRADES
+QUALIFY ROW_NUMBER() OVER (PARTITION BY TICKER, TRADE_DATE ORDER BY INGESTED_AT DESC) = 1;
 
 -- ============================================
 -- 2. DAILY RETURNS (% change day over day)

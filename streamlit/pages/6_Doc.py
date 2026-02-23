@@ -23,11 +23,21 @@ Snowpipe Streaming SDK
         ↓ (append_rows → VARIANT)
 RAW Layer (VARIANT JSON)
         |
+        ├──→ Streams (CDC — append-only change tracking)
+        |
         ↓ (Dynamic Tables — 1 min lag)
 ANALYTICS Layer (Typed & Computed)
+        |   ├── DMFs (Data Metric Functions — automated quality metrics)
+        |   └── Cortex LLM (Sentiment + Summarize)
         |
         ↓ (Dynamic Tables — 1 min lag)
 GOLD Layer (Dashboard-Ready)
+        |
+        ↓
+COMMON Layer
+        ├── Pipeline Logs + Alert Log
+        ├── Data Quality (SP + Task + DT + Alert)
+        └── Tags (Governance)
         |
         ↓
 Streamlit Dashboard + Snowflake Alerts
@@ -65,11 +75,15 @@ with col2:
     **Format:** Typed columns (FLOAT, DATE...)
 
     **Dynamic Tables:**
-    - `DAILY_OHLCV`
+    - `DAILY_OHLCV` (deduplicated with QUALIFY)
     - `DAILY_RETURNS`
     - `MOVING_AVERAGES`
+    - `NEWS_FLATTENED` / `NEWS_SENTIMENT` (Cortex)
+    - `MACRO_CPI` / `MACRO_TREASURY_10Y`
+    - `MARKETPLACE_STOCK_PRICES`
+    - `MACRO_STOCK_MONTHLY`
 
-    **Refresh:** Automatic (TARGET_LAG = 1 min)
+    **Refresh:** Automatic (TARGET_LAG = 1 min to 1 day)
     """)
 
 with col3:
@@ -78,14 +92,15 @@ with col3:
     **Format:** Aggregations
 
     **Dynamic Tables:**
-    - `TICKER_SUMMARY`
+    - `TICKER_SUMMARY` — latest price, return, trend
+    - `SENTIMENT_SUMMARY` — aggregated sentiment per ticker
+    - `MACRO_OVERVIEW` — stock prices + CPI + Treasury 10Y
 
     **Features:**
-    - Latest price, return %, trend
     - SMA 5/20, BULLISH/BEARISH signal
     - Dashboard-ready (1 table = 1 query)
 
-    **Refresh:** Automatic (TARGET_LAG = 1 min)
+    **Refresh:** Automatic (TARGET_LAG = 1 min to 1 day)
     """)
 
 st.divider()
@@ -196,15 +211,19 @@ st.markdown("""
 ### Cascade Architecture
 
 ```
-RAW.RAW_TRADES (VARIANT)
-    ↓ TARGET_LAG = 1 min
-ANALYTICS.DAILY_OHLCV (typed columns)
-    ↓ TARGET_LAG = 1 min          ↓ TARGET_LAG = 1 min
-ANALYTICS.DAILY_RETURNS      ANALYTICS.MOVING_AVERAGES
-    ↓                              ↓
-    └──────── JOIN ────────────────┘
-                    ↓ TARGET_LAG = 1 min
-            GOLD.TICKER_SUMMARY
+RAW.RAW_TRADES (VARIANT)        RAW.RAW_NEWS (VARIANT)
+    ↓ TARGET_LAG = 1 min            ↓ TARGET_LAG = 1 min
+ANALYTICS.DAILY_OHLCV          ANALYTICS.NEWS_FLATTENED
+    ↓              ↓                  ↓ TARGET_LAG = 5 min
+DAILY_RETURNS  MOVING_AVERAGES  ANALYTICS.NEWS_SENTIMENT (Cortex)
+    ↓              ↓                  ↓ TARGET_LAG = 5 min
+    └──── JOIN ────┘             GOLD.SENTIMENT_SUMMARY
+           ↓ TARGET_LAG = 1 min
+   GOLD.TICKER_SUMMARY
+
+Marketplace Data ──→ MACRO_CPI / MACRO_TREASURY_10Y / MACRO_STOCK_MONTHLY
+                          ↓ TARGET_LAG = 1 day
+                    GOLD.MACRO_OVERVIEW
 ```
 
 Snowflake automatically detects dependencies and refreshes downstream tables in cascade.
@@ -212,7 +231,7 @@ Snowflake automatically detects dependencies and refreshes downstream tables in 
 
 st.subheader("📌 SQL Examples")
 
-with st.expander("Create a Dynamic Table (DAILY_OHLCV)"):
+with st.expander("Create a Dynamic Table (DAILY_OHLCV — with deduplication)"):
     st.code("""
 CREATE OR REPLACE DYNAMIC TABLE ANALYTICS.DAILY_OHLCV
     WAREHOUSE = SNOWPULSE_WH
@@ -229,7 +248,12 @@ SELECT
     RECORD_CONTENT:vw::FLOAT                AS VWAP,
     RECORD_CONTENT:n::NUMBER                AS NUM_TRANSACTIONS,
     RECORD_METADATA:ingested_at::TIMESTAMP_NTZ AS INGESTED_AT
-FROM RAW.RAW_TRADES;
+FROM RAW.RAW_TRADES
+-- Deduplication: keep only the latest ingestion per (TICKER, TRADE_DATE)
+QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY TICKER, TRADE_DATE
+    ORDER BY INGESTED_AT DESC
+) = 1;
     """, language="sql")
 
 with st.expander("Check Dynamic Table status"):
@@ -272,13 +296,14 @@ st.markdown("""
 
 **Alerts** are Snowflake objects that evaluate a SQL condition at regular intervals and execute an action when the condition is met.
 
-### Our 3 Alerts
+### Our 4 Alerts
 
 | Alert | Condition | Frequency |
 |---|---|---|
 | `ALERT_BIG_DAILY_MOVE` | Any ticker moves > 3% in a day | Every 5 min |
 | `ALERT_TREND_CHANGE` | SMA5/SMA20 signal flips (BULLISH ↔ BEARISH) | Every 5 min |
 | `ALERT_HIGH_VOLUME` | Volume exceeds 2x the 20-day average | Every 5 min |
+| `ALERT_DATA_QUALITY_FAIL` | Any quality check returns FAIL status | Every 60 min |
 
 ### Deduplication
 Each alert checks that no identical alert was triggered for the same ticker in the **last 24 hours** via the `COMMON.ALERT_LOG` table.
@@ -396,7 +421,9 @@ with col1:
     - **Ingestion**: Snowpipe Streaming SDK (Python)
     - **Storage**: Snowflake Tables (VARIANT JSON)
     - **Transformation**: Dynamic Tables (declarative SQL)
-    - **Monitoring**: Snowflake Alerts (condition-based)
+    - **AI**: Cortex LLM (SENTIMENT + SUMMARIZE)
+    - **Quality**: Tags, DMFs, Streams, SP, Task, Alert, DT
+    - **Monitoring**: Snowflake Alerts (market + quality)
     - **Auth**: RSA key-pair authentication
     """)
 
@@ -406,8 +433,10 @@ with col2:
     - **Warehouse**: SNOWPULSE_WH (XS, auto-suspend 60s)
     - **API**: Massive / Polygon.io REST (5 req/min free tier)
     - **Tickers**: AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META
+    - **Enrichment**: Snowflake Marketplace (CPI, Treasury 10Y)
     - **Security**: External Access Integration + Secrets
-    - **Frontend**: Streamlit
+    - **Compute**: AWS EC2 (t2.micro, systemd service)
+    - **Frontend**: Streamlit (6 pages)
     - **Version Control**: Git / GitHub
     """)
 
@@ -543,6 +572,109 @@ with st.expander("Installation"):
 4. Grant access to `SNOWPULSE_ROLE`
 5. Execute `deploy/06_marketplace/01_macro_enrichment.sql`
 """)
+
+st.divider()
+
+# ─────────────────────────────────────────────────────────────
+# Data Quality
+# ─────────────────────────────────────────────────────────────
+st.header("🔍 Data Quality & Governance")
+
+st.markdown("""
+### 7 Snowflake Features for Data Quality
+
+SnowPulse uses a comprehensive data quality layer built on **7 native Snowflake features**:
+
+| Feature | Object | Purpose |
+|---|---|---|
+| **Tags** | `DATA_DOMAIN`, `DATA_LAYER`, `FRESHNESS_SLA` | Governance — classify every table by domain, layer, and freshness SLA |
+| **Data Metric Functions (DMFs)** | `NEGATIVE_PRICE_COUNT`, `OHLCV_VIOLATION_COUNT`, `MISSING_TICKER_COUNT` | Automated quality metrics attached to DAILY_OHLCV — computed every 60 minutes |
+| **Streams** | `STREAM_RAW_TRADES`, `STREAM_RAW_AGGREGATES`, `STREAM_RAW_NEWS` | CDC (Change Data Capture) — append-only tracking of new ingestions |
+| **Stored Procedure** | `SP_DATA_QUALITY_CHECK()` | Runs 10 quality checks: freshness, completeness, validity, consistency, duplicates, volume |
+| **Task** | `TASK_DATA_QUALITY_CHECK` | Schedules the SP every 60 minutes automatically |
+| **Alert** | `ALERT_DATA_QUALITY_FAIL` | Fires when any quality check fails — writes to ALERT_LOG |
+| **Dynamic Table** | `DATA_QUALITY_SUMMARY` | Latest quality status per check — dashboard-ready |
+
+### Quality Checks (10 checks)
+
+| # | Check | Category | What It Verifies |
+|---|---|---|---|
+| 1 | `freshness_raw_trades` | Freshness | RAW_TRADES has data from the last 24 hours |
+| 2 | `freshness_raw_aggregates` | Freshness | RAW_AGGREGATES has data from the last 24 hours |
+| 3 | `freshness_raw_news` | Freshness | RAW_NEWS has data from the last 48 hours |
+| 4 | `completeness_tickers` | Completeness | All 7 Mag7 tickers are present in DAILY_OHLCV |
+| 5 | `validity_prices` | Validity | No negative prices in DAILY_OHLCV |
+| 6 | `consistency_ohlcv` | Consistency | HIGH >= LOW for every bar |
+| 7 | `duplicates_daily_ohlcv` | Duplicates | No duplicate (TICKER, TRADE_DATE) pairs |
+| 8 | `volume_raw_trades` | Volume | New rows detected in RAW_TRADES stream |
+| 9 | `volume_raw_aggregates` | Volume | New rows detected in RAW_AGGREGATES stream |
+| 10 | `volume_raw_news` | Volume | New rows detected in RAW_NEWS stream |
+
+### Deduplication Strategy
+
+The `DAILY_OHLCV` Dynamic Table uses `QUALIFY ROW_NUMBER()` to automatically keep only the most recent ingestion per (TICKER, TRADE_DATE) pair — even if the source RAW_TRADES contains duplicates from multiple backfills.
+
+```sql
+QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY TICKER, TRADE_DATE
+    ORDER BY INGESTED_AT DESC
+) = 1
+```
+""")
+
+st.subheader("📌 SQL Examples")
+
+with st.expander("Run quality checks manually"):
+    st.code("""
+USE ROLE SNOWPULSE_ROLE;
+USE DATABASE SNOWPULSE_DB;
+USE WAREHOUSE SNOWPULSE_WH;
+
+-- Run all 10 quality checks
+CALL COMMON.SP_DATA_QUALITY_CHECK();
+
+-- View latest results (Dynamic Table)
+SELECT * FROM COMMON.DATA_QUALITY_SUMMARY
+ORDER BY CASE STATUS WHEN 'FAIL' THEN 1 WHEN 'WARN' THEN 2 ELSE 3 END;
+    """, language="sql")
+
+with st.expander("View Data Metric Function results"):
+    st.code("""
+-- DMF results are stored in Snowflake's internal table
+SELECT
+    MEASUREMENT_TIME,
+    TABLE_SCHEMA || '.' || TABLE_NAME AS TABLE_NAME,
+    METRIC_NAME,
+    VALUE
+FROM SNOWFLAKE.LOCAL.DATA_QUALITY_MONITORING_RESULTS
+WHERE TABLE_DATABASE = 'SNOWPULSE_DB'
+ORDER BY MEASUREMENT_TIME DESC;
+    """, language="sql")
+
+with st.expander("View governance tags"):
+    st.code("""
+-- See all tags applied to tables
+SELECT *
+FROM TABLE(INFORMATION_SCHEMA.TAG_REFERENCES_ALL_COLUMNS(
+    'SNOWPULSE_DB.RAW.RAW_TRADES', 'TABLE'
+));
+
+-- Query by tag value
+SELECT SYSTEM$GET_TAG('COMMON.DATA_LAYER', 'RAW.RAW_TRADES', 'TABLE');
+    """, language="sql")
+
+with st.expander("Manage the quality task"):
+    st.code("""
+-- Check task status
+SHOW TASKS IN SCHEMA COMMON;
+
+-- Suspend / Resume
+ALTER TASK COMMON.TASK_DATA_QUALITY_CHECK SUSPEND;
+ALTER TASK COMMON.TASK_DATA_QUALITY_CHECK RESUME;
+
+-- Run once immediately
+EXECUTE TASK COMMON.TASK_DATA_QUALITY_CHECK;
+    """, language="sql")
 
 st.divider()
 
@@ -721,5 +853,6 @@ st.divider()
 # ─────────────────────────────────────────────────────────────
 st.caption(
     "📖 SnowPulse Documentation | Magnificent Seven | "
-    "Snowpipe Streaming + Dynamic Tables + Alerts | Data: Massive (Polygon.io)"
+    "Snowpipe Streaming + Dynamic Tables + Cortex LLM + Data Quality + Alerts | "
+    "Data: Massive (Polygon.io) + Snowflake Marketplace"
 )

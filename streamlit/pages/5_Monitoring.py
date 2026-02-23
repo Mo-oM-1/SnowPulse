@@ -344,7 +344,4 @@ with tab5:
 # Footer
 # ─────────────────────────────────────────────────────────────
 st.divider()
-st.caption(
-    "🔧 SnowPulse Monitoring | Quality: COMMON.DATA_QUALITY_SUMMARY | "
-    "Logs: COMMON.PIPELINE_LOGS | Alerts: COMMON.ALERT_LOG | Auto-refresh: 60s cache"
-)
+st.caption("🔧 SnowPulse Monitoring | Auto-refresh: 60s cache")

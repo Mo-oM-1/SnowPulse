@@ -158,9 +158,31 @@ class HistoricalAggPoller:
         self.loaded = False
         log.info(f"HistoricalAggPoller initialized | Tickers: {', '.join(TICKERS)}")
 
+    def _has_recent_data(self):
+        """Check if RAW_TRADES already has data from the last 7 days"""
+        global sf_conn
+        try:
+            if sf_conn is None or sf_conn.is_closed():
+                sf_conn = get_snowflake_conn()
+            row = sf_conn.cursor().execute(
+                "SELECT COUNT(*) FROM RAW.RAW_TRADES "
+                "WHERE INGESTED_AT > DATEADD('DAY', -7, CURRENT_TIMESTAMP())"
+            ).fetchone()
+            return row[0] > 0
+        except Exception as e:
+            log.warning(f"HIST | Could not check existing data: {e}")
+            return False
+
     def fetch_and_ingest(self):
-        """Fetch 30 days of daily bars for each ticker"""
+        """Fetch 30 days of daily bars for each ticker (skip if data exists)"""
         if self.loaded:
+            return
+
+        if self._has_recent_data():
+            self.loaded = True
+            msg = "Historical data already present, skipping backfill"
+            log.info(f"HIST | {msg}")
+            sf_log("INFO", "HistoricalAggPoller", msg)
             return
 
         from datetime import timedelta

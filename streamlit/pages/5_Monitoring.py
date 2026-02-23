@@ -46,13 +46,24 @@ def load_alert_log():
 
 @st.cache_data(ttl=60)
 def load_dt_status():
-    query = """
-        SELECT NAME, SCHEMA_NAME, TARGET_LAG, SCHEDULING_STATE
-        FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLES())
-        ORDER BY SCHEMA_NAME, NAME
-    """
-    return pd.DataFrame(conn.cursor().execute(query).fetchall(),
-                        columns=["NAME", "SCHEMA", "TARGET_LAG", "STATE"])
+    cur = conn.cursor()
+    cur.execute("SHOW DYNAMIC TABLES IN DATABASE SNOWPULSE_DB")
+    rows = cur.fetchall()
+    if not rows:
+        return pd.DataFrame(columns=["NAME", "SCHEMA", "TARGET_LAG", "STATE"])
+    desc = [d[0] for d in cur.description]
+    df = pd.DataFrame(rows, columns=desc)
+    # SHOW DYNAMIC TABLES returns columns: name, schema_name, etc.
+    col_map = {c: c.upper() for c in df.columns}
+    df = df.rename(columns=col_map)
+    cols_needed = {"NAME": "NAME", "SCHEMA_NAME": "SCHEMA", "TARGET_LAG": "TARGET_LAG", "SCHEDULING_STATE": "STATE"}
+    result = pd.DataFrame()
+    for src, dst in cols_needed.items():
+        if src in df.columns:
+            result[dst] = df[src]
+        else:
+            result[dst] = "N/A"
+    return result.sort_values(["SCHEMA", "NAME"]).reset_index(drop=True)
 
 @st.cache_data(ttl=60)
 def load_row_counts():

@@ -3,6 +3,7 @@ SnowPulse - Documentation Page
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Doc | SnowPulse", page_icon="📖", layout="wide")
 
@@ -13,8 +14,8 @@ st.title("📖 Documentation")
 # ─────────────────────────────────────────────────────────────
 st.header("📊 Data Pipeline Flow")
 
-st.markdown("""
-<svg viewBox="0 0 900 680" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;margin:0 auto;display:block;">
+components.html("""
+<svg viewBox="0 0 900 680" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;margin:0 auto;display:block;background:transparent;">
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#64B5F6"/>
@@ -114,7 +115,7 @@ st.markdown("""
   <text x="450" y="643" fill="white" font-size="14" font-family="sans-serif" text-anchor="middle" font-weight="bold">Streamlit Dashboard (7 Pages)</text>
   <text x="450" y="660" fill="#B2DFDB" font-size="11" font-family="sans-serif" text-anchor="middle">Home · Technical Analysis · News & Sentiment · Alerts · Macro · Monitoring · Doc</text>
 </svg>
-""", unsafe_allow_html=True)
+""", height=700)
 
 st.divider()
 
@@ -287,8 +288,8 @@ st.markdown("""
 ### Cascade Architecture
 """)
 
-st.markdown("""
-<svg viewBox="0 0 920 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:920px;margin:0 auto;display:block;">
+components.html("""
+<svg viewBox="0 0 920 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:920px;margin:0 auto;display:block;background:transparent;">
   <defs>
     <marker id="arr2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#64B5F6"/>
@@ -427,7 +428,7 @@ st.markdown("""
   <rect x="348" y="458" width="16" height="12" rx="2" fill="none" stroke="#7E57C2" stroke-width="1"/>
   <text x="372" y="468" fill="#CE93D8" font-size="10" font-family="sans-serif">Cortex LLM (SENTIMENT + SUMMARIZE)</text>
 </svg>
-""", unsafe_allow_html=True)
+""", height=530)
 
 st.markdown("""
 Snowflake automatically detects dependencies and refreshes downstream tables in cascade.

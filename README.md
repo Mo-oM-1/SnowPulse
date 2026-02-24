@@ -9,7 +9,7 @@
 | **Snowpipe Streaming** | Real-time ingestion from Massive (Polygon.io) REST API via Python SDK |
 | **Dynamic Tables** | Declarative transformations with automatic cascade refresh (1 min lag) |
 | **Snowflake Alerts** | Automated market + data quality monitoring |
-| **Cortex LLM** | AI-powered sentiment analysis on financial news (SENTIMENT + SUMMARIZE) |
+| **Cortex LLM** | AI-powered sentiment analysis on financial news (SENTIMENT + SUMMARIZE), CTE-optimized |
 | **Snowflake Marketplace** | Macro enrichment — CPI, Treasury 10Y, extended stock prices |
 | **Data Metric Functions** | Automated quality metrics (negative prices, OHLCV violations, missing tickers) |
 | **Tags** | Governance — classify tables by domain, layer, and freshness SLA |
@@ -46,19 +46,19 @@
 │             ▼                              ▼               │
 │  ┌─── ANALYTICS ────────────────────────────────┐          │
 │  │ DAILY_OHLCV (deduplicated with QUALIFY)      │          │
-│  │ DAILY_RETURNS · MOVING_AVERAGES              │          │
-│  │ NEWS_FLATTENED · NEWS_SENTIMENT (Cortex LLM) │          │
+│  │ DAILY_RETURNS · MOVING_AVERAGES · RSI_14     │          │
+│  │ NEWS_FLATTENED · NEWS_SENTIMENT (Cortex CTE) │          │
 │  │ MACRO_CPI · MACRO_TREASURY_10Y               │          │
-│  │ MARKETPLACE_STOCK_PRICES · MACRO_STOCK_MONTHLY│         │
+│  │ MARKETPLACE_STOCK_PRICES (Mag7+SPY) · MONTHLY │         │
 │  │ + DMFs (automated quality metrics)           │          │
 │  └──────────┬───────────────────────────────────┘          │
 │             │ Dynamic Tables                                │
 │             ▼                                               │
-│  ┌─── GOLD ──────────────────────┐                         │
-│  │ TICKER_SUMMARY                │                         │
-│  │ SENTIMENT_SUMMARY             │                         │
-│  │ MACRO_OVERVIEW                │                         │
-│  └──────────┬────────────────────┘                         │
+│  ┌─── GOLD ──────────────────────────────────┐              │
+│  │ TICKER_SUMMARY · TICKER_BETA (vs SPY)    │              │
+│  │ SENTIMENT_SUMMARY · SENTIMENT_MOMENTUM   │              │
+│  │ MACRO_OVERVIEW                            │              │
+│  └──────────┬────────────────────────────────┘              │
 │             │                                               │
 │  ┌─── COMMON ─────────────────────────────┐                │
 │  │ ALERT_LOG · PIPELINE_LOGS              │                │
@@ -184,7 +184,7 @@ python streaming/stream_to_snowflake.py
 ### 5. Launch Dashboard
 
 ```bash
-streamlit run streamlit/app.py
+streamlit run streamlit/Home.py
 ```
 
 Open http://localhost:8501
@@ -221,7 +221,7 @@ snowpulse/
 │   ├── profile.json                             # Snowflake auth (gitignored)
 │   └── requirements.txt
 ├── streamlit/
-│   ├── app.py                                   # Home page
+│   ├── Home.py                                   # Home page
 │   ├── connection.py                            # Shared SF connection
 │   ├── requirements.txt
 │   └── pages/
@@ -252,8 +252,9 @@ snowpulse/
 | Python dicts for VARIANT (not json.dumps) | Direct VARIANT object storage, not string |
 | Dynamic Tables instead of Tasks | Declarative, less code, automatic cascade |
 | TARGET_LAG = 1 minute | Near real-time without overconsumption |
-| Cortex SENTIMENT() + SUMMARIZE() | Native AI, no external ML pipeline needed |
+| Cortex CTE optimization | 1 LLM call per row instead of 3 (66% cost reduction) |
 | QUALIFY ROW_NUMBER() deduplication | Handles duplicate backfills at the DT level |
+| RSI 14 + Beta vs SPY + Sentiment Momentum | Advanced technical indicators via window functions |
 | 7-feature data quality layer | Maximizes Snowflake native features for governance |
 | Snowflake Marketplace enrichment | Zero-ETL macro data (CPI, Treasury) |
 | EC2 t2.micro + systemd | 24/7 ingestion, auto-restart, free tier eligible |

@@ -78,9 +78,10 @@ with col2:
     - `DAILY_OHLCV` (deduplicated with QUALIFY)
     - `DAILY_RETURNS`
     - `MOVING_AVERAGES`
-    - `NEWS_FLATTENED` / `NEWS_SENTIMENT` (Cortex)
+    - `RSI_14` (Relative Strength Index)
+    - `NEWS_FLATTENED` / `NEWS_SENTIMENT` (Cortex CTE-optimized)
     - `MACRO_CPI` / `MACRO_TREASURY_10Y`
-    - `MARKETPLACE_STOCK_PRICES`
+    - `MARKETPLACE_STOCK_PRICES` (Mag7 + SPY)
     - `MACRO_STOCK_MONTHLY`
 
     **Refresh:** Automatic (TARGET_LAG = 1 min to 1 day)
@@ -93,11 +94,14 @@ with col3:
 
     **Dynamic Tables:**
     - `TICKER_SUMMARY` — latest price, return, trend
+    - `TICKER_BETA` — rolling 60-day Beta vs S&P 500 (REGR_SLOPE)
     - `SENTIMENT_SUMMARY` — aggregated sentiment per ticker
+    - `SENTIMENT_MOMENTUM` — 7-day sentiment MA (hype detection)
     - `MACRO_OVERVIEW` — stock prices + CPI + Treasury 10Y
 
     **Features:**
-    - SMA 5/20, BULLISH/BEARISH signal
+    - SMA 5/20, RSI 14, Beta vs SPY
+    - Sentiment momentum (3d vs 7d crossover)
     - Dashboard-ready (1 table = 1 query)
 
     **Refresh:** Automatic (TARGET_LAG = 1 min to 1 day)
@@ -211,19 +215,20 @@ st.markdown("""
 ### Cascade Architecture
 
 ```
-RAW.RAW_TRADES (VARIANT)        RAW.RAW_NEWS (VARIANT)
-    ↓ TARGET_LAG = 1 min            ↓ TARGET_LAG = 1 min
-ANALYTICS.DAILY_OHLCV          ANALYTICS.NEWS_FLATTENED
-    ↓              ↓                  ↓ TARGET_LAG = 5 min
-DAILY_RETURNS  MOVING_AVERAGES  ANALYTICS.NEWS_SENTIMENT (Cortex)
-    ↓              ↓                  ↓ TARGET_LAG = 5 min
-    └──── JOIN ────┘             GOLD.SENTIMENT_SUMMARY
-           ↓ TARGET_LAG = 1 min
-   GOLD.TICKER_SUMMARY
+RAW.RAW_TRADES (VARIANT)              RAW.RAW_NEWS (VARIANT)
+    ↓ TARGET_LAG = 1 min                  ↓ TARGET_LAG = 1 min
+ANALYTICS.DAILY_OHLCV                ANALYTICS.NEWS_FLATTENED
+    ↓         ↓        ↓                   ↓ TARGET_LAG = 5 min
+DAILY_RETURNS  MA   RSI_14           NEWS_SENTIMENT (Cortex CTE)
+    ↓          ↓                       ↓              ↓
+    └── JOIN ──┘                 SENTIMENT_SUMMARY  SENTIMENT_MOMENTUM
+         ↓ TARGET_LAG = 1 min                       (7d hype detection)
+  GOLD.TICKER_SUMMARY
 
-Marketplace Data ──→ MACRO_CPI / MACRO_TREASURY_10Y / MACRO_STOCK_MONTHLY
-                          ↓ TARGET_LAG = 1 day
-                    GOLD.MACRO_OVERVIEW
+Marketplace (Mag7 + SPY) ──→ MACRO_CPI / MACRO_TREASURY_10Y / STOCK_MONTHLY
+    ↓                              ↓ TARGET_LAG = 1 day
+GOLD.TICKER_BETA              GOLD.MACRO_OVERVIEW
+(REGR_SLOPE vs SPY)
 ```
 
 Snowflake automatically detects dependencies and refreshes downstream tables in cascade.
@@ -458,15 +463,20 @@ st.markdown("""
 2. **Warehouse auto-suspend**: 60 seconds
    - Warehouse shuts down as soon as queries stop
 
-3. **TARGET_LAG = 1 minute**
+3. **Cortex CTE optimization** 🧠
+   - NEWS_SENTIMENT uses a CTE to call `SENTIMENT()` only once per row
+   - The label (POSITIVE/NEGATIVE/NEUTRAL) is derived from the pre-computed score
+   - Reduces Cortex LLM calls by 66% (1 call instead of 3)
+
+4. **TARGET_LAG = 1 minute**
    - Near real-time without overconsumption
    - Snowflake batches updates intelligently
 
-4. **Free Tier API**
+5. **Free Tier API**
    - Massive (Polygon.io): 5 req/min (sufficient for 7 tickers)
    - Python-side rate limiting to respect API limits
 
-5. **XS Warehouse**
+6. **XS Warehouse**
    - Smallest size available, sufficient for this data volume
 """)
 
@@ -709,6 +719,11 @@ st.markdown("""
 | **Treasury 10Y Yield** | The return on the US government 10-year bond. A key benchmark for interest rates — when it rises, borrowing costs increase, which typically puts pressure on growth/tech stock valuations. |
 | **Federal Reserve (Fed)** | The central bank of the United States. Sets monetary policy including the Federal Funds Rate. Its decisions on interest rates directly impact stock markets, especially tech stocks. |
 | **Inflation** | The rate at which the general level of prices for goods and services rises, eroding purchasing power. The Fed targets approximately 2% annual inflation. |
+| **RSI (Relative Strength Index)** | A momentum oscillator ranging from 0 to 100. Calculated over 14 days using average gains vs average losses. RSI > 70 = overbought (potential pullback), RSI < 30 = oversold (potential rebound). |
+| **Beta** | A measure of a stock's volatility relative to the overall market (S&P 500 / SPY). Beta > 1 = more volatile than the market, Beta < 1 = less volatile. Calculated using REGR_SLOPE on daily returns. |
+| **SPY** | The SPDR S&P 500 ETF — an exchange-traded fund that tracks the S&P 500 index. Used as the market benchmark for Beta calculation. |
+| **Sentiment Momentum** | A 7-day moving average of daily sentiment scores (from Cortex LLM). When the 3-day MA rises above the 7-day MA, it signals rising hype that may precede price movements. |
+| **REGR_SLOPE** | A Snowflake aggregate function that computes the slope of the linear regression line between two variables. Used here to calculate Beta (stock returns vs market returns). |
 """)
 
 st.divider()
@@ -853,6 +868,6 @@ st.divider()
 # ─────────────────────────────────────────────────────────────
 st.caption(
     "📖 SnowPulse Documentation | Magnificent Seven | "
-    "Snowpipe Streaming + Dynamic Tables + Cortex LLM + Data Quality + Alerts | "
+    "Snowpipe Streaming + Dynamic Tables + Cortex LLM + Data Quality + Alerts + RSI + Beta + Sentiment Momentum | "
     "Data: Massive (Polygon.io) + Snowflake Marketplace"
 )

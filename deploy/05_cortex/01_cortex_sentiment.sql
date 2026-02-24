@@ -40,8 +40,26 @@ WHERE RECORD_CONTENT:title IS NOT NULL
 CREATE OR REPLACE DYNAMIC TABLE ANALYTICS.NEWS_SENTIMENT
     TARGET_LAG = '5 minutes'
     WAREHOUSE = SNOWPULSE_WH
-    COMMENT = 'Cortex-powered sentiment analysis on news articles'
+    COMMENT = 'Cortex-powered sentiment analysis on news articles (CTE-optimized: 1 LLM call per row)'
 AS
+WITH scored AS (
+    SELECT
+        ARTICLE_ID,
+        TITLE,
+        DESCRIPTION,
+        TICKER,
+        PUBLISHED_AT,
+        PUBLISHER_NAME,
+        ARTICLE_URL,
+        -- Single Cortex call per row (cost-optimized)
+        SNOWFLAKE.CORTEX.SENTIMENT(
+            COALESCE(TITLE, '') || '. ' || COALESCE(DESCRIPTION, '')
+        ) AS SENTIMENT_SCORE,
+        SNOWFLAKE.CORTEX.SUMMARIZE(
+            COALESCE(TITLE, '') || '. ' || COALESCE(DESCRIPTION, '')
+        ) AS AI_SUMMARY
+    FROM ANALYTICS.NEWS_FLATTENED
+)
 SELECT
     ARTICLE_ID,
     TITLE,
@@ -50,25 +68,15 @@ SELECT
     PUBLISHED_AT,
     PUBLISHER_NAME,
     ARTICLE_URL,
-
-    -- Sentiment score (-1 to +1) via Cortex
-    SNOWFLAKE.CORTEX.SENTIMENT(
-        COALESCE(TITLE, '') || '. ' || COALESCE(DESCRIPTION, '')
-    ) AS SENTIMENT_SCORE,
-
-    -- Classify sentiment
+    SENTIMENT_SCORE,
+    -- Label derived from pre-computed score (no extra LLM call)
     CASE
-        WHEN SNOWFLAKE.CORTEX.SENTIMENT(COALESCE(TITLE, '') || '. ' || COALESCE(DESCRIPTION, '')) > 0.3 THEN 'POSITIVE'
-        WHEN SNOWFLAKE.CORTEX.SENTIMENT(COALESCE(TITLE, '') || '. ' || COALESCE(DESCRIPTION, '')) < -0.3 THEN 'NEGATIVE'
+        WHEN SENTIMENT_SCORE > 0.3  THEN 'POSITIVE'
+        WHEN SENTIMENT_SCORE < -0.3 THEN 'NEGATIVE'
         ELSE 'NEUTRAL'
     END AS SENTIMENT_LABEL,
-
-    -- One-line summary via Cortex LLM
-    SNOWFLAKE.CORTEX.SUMMARIZE(
-        COALESCE(TITLE, '') || '. ' || COALESCE(DESCRIPTION, '')
-    ) AS AI_SUMMARY
-
-FROM ANALYTICS.NEWS_FLATTENED;
+    AI_SUMMARY
+FROM scored;
 
 -- ============================================
 -- 3. GOLD.SENTIMENT_SUMMARY - Aggregated per ticker

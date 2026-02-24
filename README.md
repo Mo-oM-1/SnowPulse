@@ -165,32 +165,43 @@ Key features: auto-restart on failure (`RestartSec=30`), boot persistence (`syst
 
 ```
 snowpulse/
-├── deploy/
-│   ├── 01_setup/01_setup.sql                    # Infrastructure
-│   ├── 02_raw/01_tables.sql                     # RAW tables
-│   ├── 03_dynamic_tables/01_dynamic_tables.sql  # ANALYTICS + GOLD DTs
-│   ├── 04_alerts/01_alerts.sql                  # Market alert rules
-│   ├── 05_cortex/01_cortex_sentiment.sql        # Cortex LLM
-│   ├── 06_marketplace/01_macro_enrichment.sql   # Marketplace macro data
-│   └── 07_data_quality/01_data_quality.sql      # Quality + Governance
-├── streaming/
-│   ├── stream_to_snowflake.py                   # Ingestion script (3 pollers)
-│   ├── profile.json                             # Snowflake auth (gitignored)
-│   └── requirements.txt
-├── streamlit/
-│   ├── Home.py                                   # Home page
-│   ├── connection.py                            # Shared SF connection
-│   ├── requirements.txt
-│   └── pages/
-│       ├── 1_Technical_Analysis.py              # Candlestick + SMA
-│       ├── 2_News_Sentiment.py                  # Cortex sentiment
-│       ├── 3_Alerts.py                          # Alert monitor
-│       ├── 4_Macro_Context.py                   # Macro enrichment
-│       ├── 5_Monitoring.py                      # Pipeline health + quality
-│       └── 6_Doc.py                             # Documentation
-├── .env.example                                 # Environment template
-├── .gitignore
-└── README.md
+├── 📁 assets/
+│   ├── 🖼️ data_pipeline_flow.svg                # Architecture overview
+│   └── 🖼️ dataflow.svg                          # Dynamic Tables cascade
+├── 📁 deploy/
+│   ├── 📁 01_setup/
+│   │   └── 📄 01_setup.sql                      # Infrastructure & roles
+│   ├── 📁 02_raw/
+│   │   └── 📄 01_tables.sql                     # RAW tables (VARIANT)
+│   ├── 📁 03_dynamic_tables/
+│   │   └── 📄 01_dynamic_tables.sql             # ANALYTICS + GOLD DTs
+│   ├── 📁 04_alerts/
+│   │   └── 📄 01_alerts.sql                     # Market alert rules
+│   ├── 📁 05_cortex/
+│   │   └── 📄 01_cortex_sentiment.sql           # Cortex LLM setup
+│   ├── 📁 06_marketplace/
+│   │   └── 📄 01_macro_enrichment.sql           # Marketplace macro data
+│   └── 📁 07_data_quality/
+│       └── 📄 01_data_quality.sql               # Quality + Governance
+├── 📁 streaming/
+│   ├── 📄 requirements.txt
+│   └── 🐍 stream_to_snowflake.py                # Ingestion script
+├── 📁 streamlit/
+│   ├── 📁 .streamlit/                           # Secrets config
+│   ├── 📁 pages/
+│   │   ├── 🐍 1_Technical_Analysis.py
+│   │   ├── 🐍 2_News_Sentiment.py
+│   │   ├── 🐍 3_Alerts.py
+│   │   ├── 🐍 4_Macro_Context.py
+│   │   ├── 🐍 5_Monitoring.py
+│   │   └── 🐍 6_Doc.py
+│   ├── 🐍 Home.py
+│   ├── 🐍 connection.py
+│   └── 📄 requirements.txt
+├── ⚙️ .env.example
+├── ⚙️ .gitignore
+├── 📝 README.md
+└── 📄 requirements.txt
 ```
 
 ## 🔐 Security

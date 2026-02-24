@@ -33,6 +33,13 @@ ohlcv = run_query("SELECT * FROM ANALYTICS.DAILY_OHLCV ORDER BY TICKER, TRADE_DA
 returns = run_query("SELECT * FROM ANALYTICS.DAILY_RETURNS ORDER BY TICKER, TRADE_DATE")
 ma = run_query("SELECT * FROM ANALYTICS.MOVING_AVERAGES ORDER BY TICKER, TRADE_DATE")
 
+try:
+    rsi = run_query("SELECT * FROM ANALYTICS.RSI_14 ORDER BY TICKER, TRADE_DATE")
+    has_rsi = not rsi.empty
+except Exception:
+    rsi = pd.DataFrame()
+    has_rsi = False
+
 st.title("📊 Technical Analysis")
 st.divider()
 
@@ -49,6 +56,7 @@ with col_sel:
 t_ohlcv = ohlcv[ohlcv["TICKER"] == ticker].sort_values("TRADE_DATE")
 t_returns = returns[returns["TICKER"] == ticker].sort_values("TRADE_DATE")
 t_ma = ma[ma["TICKER"] == ticker].sort_values("TRADE_DATE")
+t_rsi = rsi[rsi["TICKER"] == ticker].sort_values("TRADE_DATE") if has_rsi else pd.DataFrame()
 
 # ─── KPI Row ────────────────────────────────────────────────
 if not t_ohlcv.empty:
@@ -150,6 +158,64 @@ if not t_ma.empty:
             st.error(f"🔴 **{ticker} Trend: BEARISH** — SMA 5 (${sma5:,.2f}) < SMA 20 (${sma20:,.2f})")
 
 st.divider()
+
+# ─── RSI 14-Day ─────────────────────────────────────────────
+if not t_rsi.empty:
+    st.subheader(f"📐 {ticker} — RSI 14-Day")
+
+    latest_rsi = t_rsi.iloc[-1]
+    rsi_val = latest_rsi.get("RSI_14")
+    rsi_signal = latest_rsi.get("RSI_SIGNAL", "NEUTRAL")
+
+    # RSI KPI
+    col_rsi1, col_rsi2, col_rsi3 = st.columns([1, 1, 2])
+    with col_rsi1:
+        if rsi_val is not None and pd.notna(rsi_val):
+            st.metric("RSI 14", f"{rsi_val:.1f}")
+        else:
+            st.metric("RSI 14", "N/A")
+    with col_rsi2:
+        if rsi_signal == "OVERBOUGHT":
+            st.error(f"🔴 **OVERBOUGHT** (> 70)")
+        elif rsi_signal == "OVERSOLD":
+            st.success(f"🟢 **OVERSOLD** (< 30)")
+        else:
+            st.info(f"⚪ **NEUTRAL** (30-70)")
+
+    # RSI Chart
+    fig_rsi = go.Figure()
+    fig_rsi.add_trace(go.Scatter(
+        x=t_rsi["TRADE_DATE"], y=t_rsi["RSI_14"],
+        name="RSI 14",
+        line=dict(color="#FFA15A", width=2),
+        fill="tozeroy",
+        fillcolor="rgba(255,161,90,0.1)",
+        hovertemplate="%{x}<br>RSI: %{y:.1f}<extra></extra>",
+    ))
+
+    # Overbought / Oversold zones
+    fig_rsi.add_hline(y=70, line_dash="dash", line_color="#EF553B", opacity=0.7,
+                      annotation_text="Overbought (70)", annotation_position="top left")
+    fig_rsi.add_hline(y=30, line_dash="dash", line_color="#00CC96", opacity=0.7,
+                      annotation_text="Oversold (30)", annotation_position="bottom left")
+    fig_rsi.add_hline(y=50, line_dash="dot", line_color="gray", opacity=0.3)
+
+    # Shade overbought/oversold zones
+    fig_rsi.add_hrect(y0=70, y1=100, fillcolor="#EF553B", opacity=0.05, line_width=0)
+    fig_rsi.add_hrect(y0=0, y1=30, fillcolor="#00CC96", opacity=0.05, line_width=0)
+
+    fig_rsi.update_layout(
+        template="plotly_dark",
+        height=300,
+        yaxis_title="RSI",
+        yaxis_range=[0, 100],
+        xaxis_title="",
+        margin=dict(l=60, r=20, t=20, b=40),
+        hovermode="x unified",
+    )
+    st.plotly_chart(fig_rsi, use_container_width=True)
+
+    st.divider()
 
 # ─── Daily Returns ──────────────────────────────────────────
 st.subheader(f"📉 {ticker} — Daily Returns")

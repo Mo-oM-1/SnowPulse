@@ -45,6 +45,15 @@ except Exception:
     news_flat = pd.DataFrame()
     has_news = False
 
+try:
+    momentum = run_query(
+        "SELECT * FROM GOLD.SENTIMENT_MOMENTUM ORDER BY TICKER, SENTIMENT_DATE"
+    )
+    has_momentum = not momentum.empty
+except Exception:
+    momentum = pd.DataFrame()
+    has_momentum = False
+
 # ─── No Data State ──────────────────────────────────────────
 if not has_sentiment and not has_news:
     st.info(
@@ -148,6 +157,88 @@ if has_summary:
             margin=dict(l=20, r=20, t=20, b=40),
         )
         st.plotly_chart(fig_articles, use_container_width=True)
+
+    st.divider()
+
+# ─── Sentiment Momentum ─────────────────────────────────────
+if has_momentum:
+    st.subheader("📈 Sentiment Momentum")
+    st.caption("3-day vs 7-day moving average — Detects hype preceding price movements")
+
+    mom_tickers = sorted(momentum["TICKER"].unique())
+    sel_mom_ticker = st.selectbox("Ticker", mom_tickers, index=0, key="mom_ticker")
+    t_mom = momentum[momentum["TICKER"] == sel_mom_ticker].sort_values("SENTIMENT_DATE")
+
+    if not t_mom.empty:
+        # Latest signal KPI
+        latest_mom = t_mom.iloc[-1]
+        signal = latest_mom.get("MOMENTUM_SIGNAL", "STABLE")
+        ma3 = latest_mom.get("SENTIMENT_MA_3D", 0) or 0
+        ma7 = latest_mom.get("SENTIMENT_MA_7D", 0) or 0
+
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            st.metric("MA 3-Day", f"{ma3:+.4f}")
+        with col_m2:
+            st.metric("MA 7-Day", f"{ma7:+.4f}")
+        with col_m3:
+            if signal == "HYPE_RISING":
+                st.success(f"🚀 **HYPE RISING**")
+            elif signal == "HYPE_FALLING":
+                st.error(f"📉 **HYPE FALLING**")
+            else:
+                st.info(f"➡️ **STABLE**")
+
+        # Momentum chart: MA 3D vs MA 7D
+        fig_mom = go.Figure()
+        fig_mom.add_trace(go.Scatter(
+            x=t_mom["SENTIMENT_DATE"], y=t_mom["SENTIMENT_MA_3D"],
+            name="MA 3-Day (Short)",
+            line=dict(color="#FFA15A", width=2.5),
+            hovertemplate="%{x}<br>MA 3D: %{y:.4f}<extra></extra>",
+        ))
+        fig_mom.add_trace(go.Scatter(
+            x=t_mom["SENTIMENT_DATE"], y=t_mom["SENTIMENT_MA_7D"],
+            name="MA 7-Day (Long)",
+            line=dict(color="#636EFA", width=2.5),
+            hovertemplate="%{x}<br>MA 7D: %{y:.4f}<extra></extra>",
+        ))
+
+        # Daily sentiment dots
+        fig_mom.add_trace(go.Scatter(
+            x=t_mom["SENTIMENT_DATE"], y=t_mom["AVG_DAILY_SENTIMENT"],
+            name="Daily Avg",
+            mode="markers",
+            marker=dict(size=5, color="#AB63FA", opacity=0.5),
+            hovertemplate="%{x}<br>Daily: %{y:.4f}<extra></extra>",
+        ))
+
+        fig_mom.add_hline(y=0, line_dash="dot", line_color="gray", opacity=0.4)
+        fig_mom.update_layout(
+            template="plotly_dark",
+            height=400,
+            yaxis_title="Sentiment Score",
+            xaxis_title="",
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+            margin=dict(l=60, r=20, t=40, b=40),
+        )
+        st.plotly_chart(fig_mom, use_container_width=True)
+
+        # Momentum signal timeline
+        signal_colors = {
+            "HYPE_RISING": "#00CC96",
+            "HYPE_FALLING": "#EF553B",
+            "STABLE": "#636EFA",
+        }
+        t_mom_signals = t_mom[t_mom["MOMENTUM_SIGNAL"] != "STABLE"].tail(10)
+        if not t_mom_signals.empty:
+            st.markdown("**Recent Signals**")
+            for _, row in t_mom_signals.iterrows():
+                sig = row["MOMENTUM_SIGNAL"]
+                date = row["SENTIMENT_DATE"]
+                icon = "🚀" if sig == "HYPE_RISING" else "📉"
+                st.caption(f"{icon} `{date}` — **{sig}** (Articles: {int(row.get('ARTICLE_COUNT', 0))})")
 
     st.divider()
 

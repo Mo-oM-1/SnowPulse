@@ -6,6 +6,7 @@ Real-Time Market Intelligence Dashboard
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 import sys
 from pathlib import Path
 
@@ -169,6 +170,79 @@ if not summary_f.empty:
             "LAST_VOLUME": st.column_config.NumberColumn("Volume", format="%d"),
         },
     )
+
+# ─── Beta vs S&P 500 ─────────────────────────────────────────
+try:
+    beta_data = run_query("""
+        SELECT TICKER, TRADE_DATE, BETA_60D, R_SQUARED_60D, RISK_PROFILE
+        FROM GOLD.TICKER_BETA
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY TICKER ORDER BY TRADE_DATE DESC) = 1
+    """)
+    has_beta = not beta_data.empty
+except Exception:
+    beta_data = pd.DataFrame()
+    has_beta = False
+
+if has_beta:
+    beta_f = beta_data[beta_data["TICKER"].isin(selected)] if selected else beta_data
+
+    if not beta_f.empty:
+        st.subheader("📐 Beta vs S&P 500 (SPY)")
+        st.caption("Rolling 60-day Beta — Measures stock volatility relative to the market")
+
+        col_chart, col_table = st.columns([2, 1])
+
+        with col_chart:
+            beta_sorted = beta_f.sort_values("BETA_60D", ascending=True)
+            colors = []
+            for b in beta_sorted["BETA_60D"]:
+                if b > 1.2:
+                    colors.append("#EF553B")
+                elif b < 0.8:
+                    colors.append("#00CC96")
+                else:
+                    colors.append("#636EFA")
+
+            fig_beta = go.Figure(go.Bar(
+                x=beta_sorted["BETA_60D"],
+                y=beta_sorted["TICKER"],
+                orientation="h",
+                marker_color=colors,
+                text=[f"{b:.2f}" for b in beta_sorted["BETA_60D"]],
+                textposition="outside",
+                hovertemplate="%{y}<br>Beta: %{x:.3f}<extra></extra>",
+            ))
+            fig_beta.add_vline(x=1.0, line_dash="dash", line_color="white", opacity=0.5,
+                               annotation_text="Market (1.0)", annotation_position="top")
+            fig_beta.update_layout(
+                template="plotly_dark",
+                height=350,
+                xaxis_title="Beta (60-day)",
+                yaxis_title="",
+                margin=dict(l=80, r=60, t=30, b=40),
+            )
+            st.plotly_chart(fig_beta, use_container_width=True)
+
+        with col_table:
+            st.markdown("**Risk Profile**")
+            for _, row in beta_f.sort_values("BETA_60D", ascending=False).iterrows():
+                beta_val = row["BETA_60D"]
+                r2 = row.get("R_SQUARED_60D", 0) or 0
+                profile = row.get("RISK_PROFILE", "NEUTRAL")
+
+                if profile == "HIGH_RISK":
+                    icon = "🔴"
+                elif profile == "DEFENSIVE":
+                    icon = "🟢"
+                else:
+                    icon = "⚪"
+
+                st.markdown(
+                    f"{icon} **{row['TICKER']}** — Beta: `{beta_val:.2f}` | "
+                    f"R²: `{r2:.2f}` | {profile}"
+                )
+
+        st.divider()
 
 # ─── Footer ─────────────────────────────────────────────────
 st.divider()

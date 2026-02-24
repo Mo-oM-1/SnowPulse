@@ -1,6 +1,13 @@
 # ⚡ SnowPulse — Near-Real-Time Market Intelligence
 
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
+![Snowflake](https://img.shields.io/badge/Snowflake-Native-29B5E8?logo=snowflake&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-EC2-FF9900?logo=amazonaws&logoColor=white)
+
 > Near-Real-time market intelligence platform for the **Magnificent Seven** (AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META) built 100% on **Snowflake native features**.
+
+### 🚀 **[Try the Live Dashboard Here](https://snow-pulse.streamlit.app/)**
 
 ## 🎯 What This Project Demonstrates
 

@@ -1,6 +1,6 @@
 """
 SnowPulse - Home Page
-Real-Time Market Intelligence Dashboard
+Near-Real-Time Market Intelligence Dashboard
 """
 
 import streamlit as st
@@ -59,7 +59,7 @@ st.markdown("""
 # ─── Sidebar ────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## ⚡ SnowPulse")
-    st.caption("Real-Time Market Intelligence")
+    st.caption("Near-Real-Time Market Intelligence")
     st.divider()
 
     summary = run_query("SELECT * FROM GOLD.TICKER_SUMMARY ORDER BY TICKER")
@@ -86,7 +86,7 @@ summary_f = summary[summary["TICKER"].isin(selected)] if selected else summary
 # ─── Header ─────────────────────────────────────────────────
 st.markdown('<p class="main-title">SnowPulse Dashboard</p>', unsafe_allow_html=True)
 st.markdown(
-    '<p class="sub-title">Magnificent Seven — Real-time market intelligence powered by Snowflake</p>',
+    '<p class="sub-title">Magnificent Seven — Near-Real-time market intelligence powered by Snowflake</p>',
     unsafe_allow_html=True,
 )
 st.divider()

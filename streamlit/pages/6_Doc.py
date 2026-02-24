@@ -124,7 +124,7 @@ with col1:
     **Ingestion:** Snowpipe Streaming SDK
     - RSA key-pair authentication
     - Python `append_rows()`
-    - Real-time via REST polling
+    - Near-Real-time via REST polling
     """)
 
 with col2:
@@ -175,7 +175,7 @@ st.header("🚀 Snowpipe Streaming")
 st.markdown("""
 ### What is Snowpipe Streaming?
 
-**Snowpipe Streaming** is a real-time ingestion service from Snowflake that allows sending data directly into tables via the Python SDK, **without staging files**.
+**Snowpipe Streaming** is a near-real-time ingestion service from Snowflake that allows sending data directly into tables via the Python SDK, **without staging files**.
 
 ### Snowpipe Streaming vs Classic Snowpipe
 
@@ -994,7 +994,7 @@ with st.expander("4 — Create a systemd Service"):
     st.code("""
 sudo tee /etc/systemd/system/snowpulse.service > /dev/null <<'EOF'
 [Unit]
-Description=SnowPulse - Real-Time Market Data Streamer
+Description=SnowPulse - Near-Real-Time Market Data Streamer
 After=network.target
 
 [Service]

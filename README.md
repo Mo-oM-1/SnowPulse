@@ -196,6 +196,10 @@ snowpulse/
 
 ## ⚡ Key Technical Decisions
 
+<p align="center">
+  <img src="assets/dataflow.svg" alt="Dynamic Tables Cascade Architecture" width="850"/>
+</p>
+
 | Decision | Why |
 |---|---|
 | REST polling instead of WebSocket | Free tier compatible (5 req/min) |

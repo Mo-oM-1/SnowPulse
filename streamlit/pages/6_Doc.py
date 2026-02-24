@@ -14,35 +14,107 @@ st.title("📖 Documentation")
 st.header("📊 Data Pipeline Flow")
 
 st.markdown("""
-```
-Massive (Polygon.io) REST API — Magnificent Seven
-        |
-        ↓ (Python — REST Polling)
-Snowpipe Streaming SDK
-        |
-        ↓ (append_rows → VARIANT)
-RAW Layer (VARIANT JSON)
-        |
-        ├──→ Streams (CDC — append-only change tracking)
-        |
-        ↓ (Dynamic Tables — 1 min lag)
-ANALYTICS Layer (Typed & Computed)
-        |   ├── DMFs (Data Metric Functions — automated quality metrics)
-        |   └── Cortex LLM (Sentiment + Summarize)
-        |
-        ↓ (Dynamic Tables — 1 min lag)
-GOLD Layer (Dashboard-Ready)
-        |
-        ↓
-COMMON Layer
-        ├── Pipeline Logs + Alert Log
-        ├── Data Quality (SP + Task + DT + Alert)
-        └── Tags (Governance)
-        |
-        ↓
-Streamlit Dashboard + Snowflake Alerts
-```
-""")
+<svg viewBox="0 0 900 680" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;margin:0 auto;display:block;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64B5F6"/>
+    </marker>
+    <linearGradient id="gSource" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5C6BC0"/><stop offset="100%" stop-color="#7E57C2"/>
+    </linearGradient>
+    <linearGradient id="gRaw" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6D4C41"/><stop offset="100%" stop-color="#8D6E63"/>
+    </linearGradient>
+    <linearGradient id="gAnalytics" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#455A64"/><stop offset="100%" stop-color="#607D8B"/>
+    </linearGradient>
+    <linearGradient id="gGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F57F17"/><stop offset="100%" stop-color="#FFB300"/>
+    </linearGradient>
+    <linearGradient id="gCommon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#37474F"/><stop offset="100%" stop-color="#546E7A"/>
+    </linearGradient>
+    <linearGradient id="gDash" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00897B"/><stop offset="100%" stop-color="#26A69A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sources -->
+  <rect x="80" y="10" width="320" height="52" rx="10" fill="url(#gSource)" opacity="0.9"/>
+  <text x="240" y="32" fill="white" font-size="13" font-family="sans-serif" text-anchor="middle" font-weight="bold">Massive (Polygon.io) REST API</text>
+  <text x="240" y="50" fill="#B0BEC5" font-size="11" font-family="sans-serif" text-anchor="middle">Magnificent Seven — 5 req/min</text>
+
+  <rect x="500" y="10" width="320" height="52" rx="10" fill="url(#gSource)" opacity="0.9"/>
+  <text x="660" y="32" fill="white" font-size="13" font-family="sans-serif" text-anchor="middle" font-weight="bold">Snowflake Marketplace</text>
+  <text x="660" y="50" fill="#B0BEC5" font-size="11" font-family="sans-serif" text-anchor="middle">CPI, Treasury 10Y, Stock Prices</text>
+
+  <!-- Arrow: Source -> Streaming -->
+  <line x1="240" y1="62" x2="240" y2="95" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="295" y="83" fill="#90CAF9" font-size="10" font-family="sans-serif">Python REST Polling</text>
+
+  <!-- Snowpipe Streaming -->
+  <rect x="120" y="98" width="240" height="42" rx="8" fill="#1A237E" opacity="0.85" stroke="#42A5F5" stroke-width="1"/>
+  <text x="240" y="124" fill="#64B5F6" font-size="12" font-family="sans-serif" text-anchor="middle" font-weight="bold">Snowpipe Streaming SDK</text>
+
+  <!-- Arrow: Streaming -> RAW -->
+  <line x1="240" y1="140" x2="240" y2="175" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="295" y="163" fill="#90CAF9" font-size="10" font-family="sans-serif">append_rows() → VARIANT</text>
+
+  <!-- RAW Layer -->
+  <rect x="50" y="178" width="800" height="65" rx="12" fill="url(#gRaw)" opacity="0.85"/>
+  <text x="100" y="200" fill="white" font-size="14" font-family="sans-serif" font-weight="bold">RAW Layer</text>
+  <text x="100" y="218" fill="#BCAAA4" font-size="11" font-family="sans-serif">RAW_TRADES</text>
+  <text x="250" y="218" fill="#BCAAA4" font-size="11" font-family="sans-serif">RAW_AGGREGATES</text>
+  <text x="420" y="218" fill="#BCAAA4" font-size="11" font-family="sans-serif">RAW_NEWS</text>
+  <text x="100" y="235" fill="#A1887F" font-size="10" font-family="sans-serif">+ Streams (CDC — append-only change tracking)</text>
+
+  <!-- Arrow: RAW -> Analytics -->
+  <line x1="350" y1="243" x2="350" y2="278" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="400" y="266" fill="#90CAF9" font-size="10" font-family="sans-serif">Dynamic Tables — 1 min lag</text>
+
+  <!-- Arrow: Marketplace -> Analytics -->
+  <line x1="660" y1="62" x2="660" y2="278" stroke="#64B5F6" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow)"/>
+  <text x="670" y="175" fill="#90CAF9" font-size="10" font-family="sans-serif">Secure Data Sharing</text>
+
+  <!-- ANALYTICS Layer -->
+  <rect x="50" y="281" width="800" height="100" rx="12" fill="url(#gAnalytics)" opacity="0.85"/>
+  <text x="100" y="305" fill="white" font-size="14" font-family="sans-serif" font-weight="bold">ANALYTICS Layer</text>
+  <text x="100" y="325" fill="#B0BEC5" font-size="10.5" font-family="sans-serif">DAILY_OHLCV · DAILY_RETURNS · MOVING_AVERAGES · RSI_14</text>
+  <text x="100" y="343" fill="#B0BEC5" font-size="10.5" font-family="sans-serif">NEWS_FLATTENED · NEWS_SENTIMENT (Cortex CTE)</text>
+  <text x="100" y="361" fill="#B0BEC5" font-size="10.5" font-family="sans-serif">MACRO_CPI · MACRO_TREASURY_10Y · MARKETPLACE_STOCK_PRICES (Mag7+SPY) · MACRO_STOCK_MONTHLY</text>
+
+  <!-- Tags on Analytics -->
+  <rect x="660" y="298" width="170" height="35" rx="6" fill="#263238" stroke="#4DB6AC" stroke-width="1"/>
+  <text x="745" y="312" fill="#4DB6AC" font-size="10" font-family="sans-serif" text-anchor="middle">DMFs + Cortex LLM</text>
+  <text x="745" y="326" fill="#80CBC4" font-size="9" font-family="sans-serif" text-anchor="middle">Quality Metrics + Sentiment</text>
+
+  <!-- Arrow: Analytics -> Gold -->
+  <line x1="350" y1="381" x2="350" y2="416" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="400" y="404" fill="#90CAF9" font-size="10" font-family="sans-serif">Dynamic Tables — 1 min to 1 day</text>
+
+  <!-- GOLD Layer -->
+  <rect x="50" y="419" width="800" height="75" rx="12" fill="url(#gGold)" opacity="0.85"/>
+  <text x="100" y="443" fill="white" font-size="14" font-family="sans-serif" font-weight="bold">GOLD Layer</text>
+  <text x="100" y="463" fill="#FFF8E1" font-size="10.5" font-family="sans-serif">TICKER_SUMMARY · TICKER_BETA (vs SPY) · SENTIMENT_SUMMARY · SENTIMENT_MOMENTUM · MACRO_OVERVIEW</text>
+  <text x="100" y="481" fill="#FFE082" font-size="10" font-family="sans-serif">Dashboard-ready: 1 table = 1 query</text>
+
+  <!-- Arrow: Gold -> Common -->
+  <line x1="350" y1="494" x2="350" y2="525" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- COMMON Layer -->
+  <rect x="50" y="528" width="800" height="55" rx="12" fill="url(#gCommon)" opacity="0.85"/>
+  <text x="100" y="550" fill="white" font-size="14" font-family="sans-serif" font-weight="bold">COMMON Layer</text>
+  <text x="100" y="570" fill="#B0BEC5" font-size="10.5" font-family="sans-serif">Pipeline Logs · Alert Log · Data Quality (SP + Task + DT + Alert) · Tags (Governance)</text>
+
+  <!-- Arrow: Common -> Dashboard -->
+  <line x1="350" y1="583" x2="350" y2="618" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Dashboard -->
+  <rect x="120" y="621" width="660" height="48" rx="10" fill="url(#gDash)" opacity="0.9"/>
+  <text x="450" y="643" fill="white" font-size="14" font-family="sans-serif" text-anchor="middle" font-weight="bold">Streamlit Dashboard (7 Pages)</text>
+  <text x="450" y="660" fill="#B2DFDB" font-size="11" font-family="sans-serif" text-anchor="middle">Home · Technical Analysis · News & Sentiment · Alerts · Macro · Monitoring · Doc</text>
+</svg>
+""", unsafe_allow_html=True)
 
 st.divider()
 
@@ -213,24 +285,151 @@ st.markdown("""
 | **Refresh** | CRON or dependencies | TARGET_LAG (automatic) |
 
 ### Cascade Architecture
+""")
 
-```
-RAW.RAW_TRADES (VARIANT)              RAW.RAW_NEWS (VARIANT)
-    ↓ TARGET_LAG = 1 min                  ↓ TARGET_LAG = 1 min
-ANALYTICS.DAILY_OHLCV                ANALYTICS.NEWS_FLATTENED
-    ↓         ↓        ↓                   ↓ TARGET_LAG = 5 min
-DAILY_RETURNS  MA   RSI_14           NEWS_SENTIMENT (Cortex CTE)
-    ↓          ↓                       ↓              ↓
-    └── JOIN ──┘                 SENTIMENT_SUMMARY  SENTIMENT_MOMENTUM
-         ↓ TARGET_LAG = 1 min                       (7d hype detection)
-  GOLD.TICKER_SUMMARY
+st.markdown("""
+<svg viewBox="0 0 920 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:920px;margin:0 auto;display:block;">
+  <defs>
+    <marker id="arr2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64B5F6"/>
+    </marker>
+  </defs>
 
-Marketplace (Mag7 + SPY) ──→ MACRO_CPI / MACRO_TREASURY_10Y / STOCK_MONTHLY
-    ↓                              ↓ TARGET_LAG = 1 day
-GOLD.TICKER_BETA              GOLD.MACRO_OVERVIEW
-(REGR_SLOPE vs SPY)
-```
+  <!-- ROW 1: RAW Sources -->
+  <rect x="30" y="10" width="200" height="40" rx="8" fill="#5D4037" opacity="0.9"/>
+  <text x="130" y="35" fill="white" font-size="11" font-family="sans-serif" text-anchor="middle" font-weight="bold">RAW_TRADES (VARIANT)</text>
 
+  <rect x="350" y="10" width="200" height="40" rx="8" fill="#5D4037" opacity="0.9"/>
+  <text x="450" y="35" fill="white" font-size="11" font-family="sans-serif" text-anchor="middle" font-weight="bold">RAW_NEWS (VARIANT)</text>
+
+  <rect x="670" y="10" width="220" height="40" rx="8" fill="#4527A0" opacity="0.85"/>
+  <text x="780" y="28" fill="white" font-size="10.5" font-family="sans-serif" text-anchor="middle" font-weight="bold">Snowflake Marketplace</text>
+  <text x="780" y="44" fill="#B39DDB" font-size="9.5" font-family="sans-serif" text-anchor="middle">Mag7 + SPY + CPI + Treasury</text>
+
+  <!-- Arrows ROW 1 -> ROW 2 -->
+  <line x1="130" y1="50" x2="130" y2="82" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="450" y1="50" x2="450" y2="82" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="780" y1="50" x2="780" y2="82" stroke="#64B5F6" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr2)"/>
+
+  <!-- LAG labels -->
+  <text x="160" y="72" fill="#90CAF9" font-size="9" font-family="sans-serif">1 min</text>
+  <text x="480" y="72" fill="#90CAF9" font-size="9" font-family="sans-serif">1 min</text>
+  <text x="810" y="72" fill="#90CAF9" font-size="9" font-family="sans-serif">1 day</text>
+
+  <!-- ROW 2: First Analytics -->
+  <rect x="30" y="85" width="200" height="36" rx="7" fill="#455A64" opacity="0.9"/>
+  <text x="130" y="108" fill="#E0E0E0" font-size="11" font-family="sans-serif" text-anchor="middle" font-weight="bold">DAILY_OHLCV</text>
+
+  <rect x="350" y="85" width="200" height="36" rx="7" fill="#455A64" opacity="0.9"/>
+  <text x="450" y="108" fill="#E0E0E0" font-size="11" font-family="sans-serif" text-anchor="middle" font-weight="bold">NEWS_FLATTENED</text>
+
+  <rect x="670" y="85" width="105" height="36" rx="7" fill="#455A64" opacity="0.9"/>
+  <text x="722" y="108" fill="#E0E0E0" font-size="10" font-family="sans-serif" text-anchor="middle">MACRO_CPI</text>
+
+  <rect x="785" y="85" width="105" height="36" rx="7" fill="#455A64" opacity="0.9"/>
+  <text x="837" y="108" fill="#E0E0E0" font-size="10" font-family="sans-serif" text-anchor="middle">TREASURY_10Y</text>
+
+  <!-- Arrows ROW 2 -> ROW 3 -->
+  <line x1="70" y1="121" x2="70" y2="165" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="130" y1="121" x2="130" y2="165" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="190" y1="121" x2="190" y2="165" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="450" y1="121" x2="450" y2="165" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <text x="470" y="148" fill="#90CAF9" font-size="9" font-family="sans-serif">5 min</text>
+
+  <!-- ROW 3: Second Analytics -->
+  <rect x="10" y="168" width="120" height="36" rx="7" fill="#546E7A" opacity="0.9"/>
+  <text x="70" y="191" fill="#E0E0E0" font-size="10" font-family="sans-serif" text-anchor="middle">DAILY_RETURNS</text>
+
+  <rect x="140" y="168" width="75" height="36" rx="7" fill="#546E7A" opacity="0.9"/>
+  <text x="177" y="191" fill="#E0E0E0" font-size="10" font-family="sans-serif" text-anchor="middle">MA</text>
+
+  <rect x="225" y="168" width="75" height="36" rx="7" fill="#546E7A" opacity="0.9"/>
+  <text x="262" y="191" fill="#E0E0E0" font-size="10" font-family="sans-serif" text-anchor="middle">RSI_14</text>
+
+  <rect x="370" y="168" width="160" height="36" rx="7" fill="#546E7A" opacity="0.9" stroke="#7E57C2" stroke-width="1"/>
+  <text x="450" y="185" fill="#CE93D8" font-size="10" font-family="sans-serif" text-anchor="middle" font-weight="bold">NEWS_SENTIMENT</text>
+  <text x="450" y="198" fill="#B39DDB" font-size="8.5" font-family="sans-serif" text-anchor="middle">Cortex CTE</text>
+
+  <rect x="670" y="168" width="105" height="36" rx="7" fill="#546E7A" opacity="0.9"/>
+  <text x="722" y="185" fill="#E0E0E0" font-size="9.5" font-family="sans-serif" text-anchor="middle">STOCK_PRICES</text>
+  <text x="722" y="198" fill="#B0BEC5" font-size="8.5" font-family="sans-serif" text-anchor="middle">Mag7 + SPY</text>
+
+  <rect x="785" y="168" width="105" height="36" rx="7" fill="#546E7A" opacity="0.9"/>
+  <text x="837" y="191" fill="#E0E0E0" font-size="9.5" font-family="sans-serif" text-anchor="middle">STOCK_MONTHLY</text>
+
+  <!-- Arrows ROW 3 -> ROW 4 (Gold) -->
+  <!-- DAILY_RETURNS + MA -> TICKER_SUMMARY -->
+  <line x1="70" y1="204" x2="70" y2="250" stroke="#64B5F6" stroke-width="1.2"/>
+  <line x1="70" y1="250" x2="130" y2="280" stroke="#64B5F6" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="177" y1="204" x2="177" y2="250" stroke="#64B5F6" stroke-width="1.2"/>
+  <line x1="177" y1="250" x2="130" y2="280" stroke="#64B5F6" stroke-width="1.2"/>
+
+  <!-- NEWS_SENTIMENT -> SENTIMENT_SUMMARY + SENTIMENT_MOMENTUM -->
+  <line x1="410" y1="204" x2="380" y2="280" stroke="#64B5F6" stroke-width="1.2" marker-end="url(#arr2)"/>
+  <line x1="490" y1="204" x2="530" y2="280" stroke="#64B5F6" stroke-width="1.2" marker-end="url(#arr2)"/>
+
+  <!-- STOCK_PRICES -> TICKER_BETA -->
+  <line x1="722" y1="204" x2="722" y2="248" stroke="#64B5F6" stroke-width="1.2"/>
+  <line x1="130" y1="204" x2="130" y2="248" stroke="#64B5F6" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <line x1="130" y1="248" x2="722" y2="248" stroke="#64B5F6" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.4"/>
+  <line x1="722" y1="248" x2="722" y2="280" stroke="#64B5F6" stroke-width="1.2" marker-end="url(#arr2)"/>
+
+  <!-- STOCK_MONTHLY + Macro -> MACRO_OVERVIEW -->
+  <line x1="837" y1="204" x2="837" y2="280" stroke="#64B5F6" stroke-width="1.2" marker-end="url(#arr2)"/>
+
+  <!-- ROW 4: GOLD Layer -->
+  <rect x="30" y="275" width="870" height="10" rx="3" fill="#F57F17" opacity="0.2"/>
+
+  <rect x="50" y="283" width="160" height="40" rx="8" fill="#F57F17" opacity="0.85"/>
+  <text x="130" y="308" fill="white" font-size="11" font-family="sans-serif" text-anchor="middle" font-weight="bold">TICKER_SUMMARY</text>
+
+  <rect x="310" y="283" width="160" height="40" rx="8" fill="#F57F17" opacity="0.85"/>
+  <text x="390" y="302" fill="white" font-size="10" font-family="sans-serif" text-anchor="middle" font-weight="bold">SENTIMENT_SUMMARY</text>
+
+  <rect x="480" y="283" width="170" height="40" rx="8" fill="#F57F17" opacity="0.85"/>
+  <text x="565" y="302" fill="white" font-size="10" font-family="sans-serif" text-anchor="middle" font-weight="bold">SENTIMENT_MOMENTUM</text>
+  <text x="565" y="316" fill="#FFF8E1" font-size="8.5" font-family="sans-serif" text-anchor="middle">7d hype detection</text>
+
+  <rect x="660" y="283" width="105" height="40" rx="8" fill="#F57F17" opacity="0.85"/>
+  <text x="712" y="302" fill="white" font-size="10" font-family="sans-serif" text-anchor="middle" font-weight="bold">TICKER_BETA</text>
+  <text x="712" y="316" fill="#FFF8E1" font-size="8.5" font-family="sans-serif" text-anchor="middle">vs SPY (60d)</text>
+
+  <rect x="775" y="283" width="120" height="40" rx="8" fill="#F57F17" opacity="0.85"/>
+  <text x="835" y="302" fill="white" font-size="10" font-family="sans-serif" text-anchor="middle" font-weight="bold">MACRO_OVERVIEW</text>
+  <text x="835" y="316" fill="#FFF8E1" font-size="8.5" font-family="sans-serif" text-anchor="middle">CPI + Treasury</text>
+
+  <!-- GOLD label -->
+  <text x="30" y="350" fill="#FFB300" font-size="12" font-family="sans-serif" font-weight="bold">GOLD LAYER</text>
+  <text x="160" y="350" fill="#FFE082" font-size="10" font-family="sans-serif">Dashboard-ready — auto-refresh cascade</text>
+
+  <!-- Legend -->
+  <rect x="30" y="380" width="860" height="130" rx="10" fill="#1a1a2e" opacity="0.6" stroke="#2a2a4e" stroke-width="1"/>
+  <text x="50" y="400" fill="#B0BEC5" font-size="11" font-family="sans-serif" font-weight="bold">Legend</text>
+
+  <rect x="50" y="412" width="14" height="14" rx="3" fill="#5D4037"/>
+  <text x="72" y="424" fill="#BCAAA4" font-size="10" font-family="sans-serif">RAW (VARIANT JSON)</text>
+
+  <rect x="50" y="434" width="14" height="14" rx="3" fill="#455A64"/>
+  <text x="72" y="446" fill="#B0BEC5" font-size="10" font-family="sans-serif">ANALYTICS (Typed + Computed)</text>
+
+  <rect x="50" y="456" width="14" height="14" rx="3" fill="#F57F17"/>
+  <text x="72" y="468" fill="#FFE082" font-size="10" font-family="sans-serif">GOLD (Dashboard-Ready)</text>
+
+  <rect x="50" y="478" width="14" height="14" rx="3" fill="#4527A0"/>
+  <text x="72" y="490" fill="#B39DDB" font-size="10" font-family="sans-serif">Snowflake Marketplace (Secure Data Sharing)</text>
+
+  <line x1="350" y1="419" x2="400" y2="419" stroke="#64B5F6" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <text x="410" y="424" fill="#90CAF9" font-size="10" font-family="sans-serif">Dynamic Table dependency</text>
+
+  <line x1="350" y1="441" x2="400" y2="441" stroke="#64B5F6" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr2)"/>
+  <text x="410" y="446" fill="#90CAF9" font-size="10" font-family="sans-serif">Cross-layer join (DAILY_OHLCV + SPY → BETA)</text>
+
+  <rect x="348" y="458" width="16" height="12" rx="2" fill="none" stroke="#7E57C2" stroke-width="1"/>
+  <text x="372" y="468" fill="#CE93D8" font-size="10" font-family="sans-serif">Cortex LLM (SENTIMENT + SUMMARIZE)</text>
+</svg>
+""", unsafe_allow_html=True)
+
+st.markdown("""
 Snowflake automatically detects dependencies and refreshes downstream tables in cascade.
 """)
 

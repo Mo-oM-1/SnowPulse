@@ -21,59 +21,9 @@
 
 ## 🏗️ Architecture
 
-```
-┌──────────────────────────┐     ┌──────────────────────────┐
-│  Massive (Polygon.io)    │     │  Snowflake Marketplace   │
-│      REST API            │     │  (CPI, Treasury, Stocks) │
-└───────────┬──────────────┘     └───────────┬──────────────┘
-            │ Python (REST polling)           │ Secure Data Sharing
-            ▼                                 │
-┌──────────────────────────┐                  │
-│  Snowpipe Streaming SDK  │                  │
-│  append_rows() → VARIANT │                  │
-└───────────┬──────────────┘                  │
-            │                                 │
-            ▼                                 │
-┌─────────────────────────────────────────────┼──────────────┐
-│                    SNOWPULSE_DB             │               │
-│                                             │               │
-│  ┌─── RAW ──────────────┐                  │               │
-│  │ RAW_TRADES           │──→ Streams (CDC) │               │
-│  │ RAW_AGGREGATES       │                  │               │
-│  │ RAW_NEWS             │                  │               │
-│  └──────────┬───────────┘                  │               │
-│             │ Dynamic Tables               │               │
-│             ▼                              ▼               │
-│  ┌─── ANALYTICS ────────────────────────────────┐          │
-│  │ DAILY_OHLCV (deduplicated with QUALIFY)      │          │
-│  │ DAILY_RETURNS · MOVING_AVERAGES · RSI_14     │          │
-│  │ NEWS_FLATTENED · NEWS_SENTIMENT (Cortex CTE) │          │
-│  │ MACRO_CPI · MACRO_TREASURY_10Y               │          │
-│  │ MARKETPLACE_STOCK_PRICES (Mag7+SPY) · MONTHLY │         │
-│  │ + DMFs (automated quality metrics)           │          │
-│  └──────────┬───────────────────────────────────┘          │
-│             │ Dynamic Tables                                │
-│             ▼                                               │
-│  ┌─── GOLD ──────────────────────────────────┐              │
-│  │ TICKER_SUMMARY · TICKER_BETA (vs SPY)    │              │
-│  │ SENTIMENT_SUMMARY · SENTIMENT_MOMENTUM   │              │
-│  │ MACRO_OVERVIEW                            │              │
-│  └──────────┬────────────────────────────────┘              │
-│             │                                               │
-│  ┌─── COMMON ─────────────────────────────┐                │
-│  │ ALERT_LOG · PIPELINE_LOGS              │                │
-│  │ DATA_QUALITY_LOG · DATA_QUALITY_SUMMARY│                │
-│  │ Tags (governance) · SP + Task + Alert  │                │
-│  └────────────────────────────────────────┘                │
-└─────────────────────────────────────────────────────────────┘
-            │
-            ▼
-┌──────────────────────────────────┐
-│   Streamlit Dashboard (6 pages)  │
-│  Home · Analysis · News · Alerts │
-│  Macro · Monitoring · Doc        │
-└──────────────────────────────────┘
-```
+<p align="center">
+  <img src="assets/data_pipeline_flow.svg" alt="SnowPulse Architecture" width="850"/>
+</p>
 
 ## 📊 Dashboard Pages
 

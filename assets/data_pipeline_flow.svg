@@ -1,0 +1,84 @@
+<svg viewBox="0 0 900 680" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;margin:0 auto;display:block;background:#0e1117;">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64B5F6"/>
+    </marker>
+    <linearGradient id="gSource" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5C6BC0"/><stop offset="100%" stop-color="#7E57C2"/>
+    </linearGradient>
+    <linearGradient id="gRaw" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6D4C41"/><stop offset="100%" stop-color="#8D6E63"/>
+    </linearGradient>
+    <linearGradient id="gAnalytics" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#455A64"/><stop offset="100%" stop-color="#607D8B"/>
+    </linearGradient>
+    <linearGradient id="gGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F57F17"/><stop offset="100%" stop-color="#FFB300"/>
+    </linearGradient>
+    <linearGradient id="gCommon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#37474F"/><stop offset="100%" stop-color="#546E7A"/>
+    </linearGradient>
+    <linearGradient id="gDash" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00897B"/><stop offset="100%" stop-color="#26A69A"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="80" y="10" width="320" height="52" rx="10" fill="url(#gSource)" opacity="0.9"/>
+  <text x="240" y="32" fill="white" font-size="13" font-family="sans-serif" text-anchor="middle" font-weight="bold">Massive (Polygon.io) REST API</text>
+  <text x="240" y="50" fill="#B0BEC5" font-size="11" font-family="sans-serif" text-anchor="middle">Magnificent Seven — 5 req/min</text>
+
+  <rect x="500" y="10" width="320" height="52" rx="10" fill="url(#gSource)" opacity="0.9"/>
+  <text x="660" y="32" fill="white" font-size="13" font-family="sans-serif" text-anchor="middle" font-weight="bold">Snowflake Marketplace</text>
+  <text x="660" y="50" fill="#B0BEC5" font-size="11" font-family="sans-serif" text-anchor="middle">CPI, Treasury 10Y, Stock Prices</text>
+
+  <line x1="240" y1="62" x2="240" y2="95" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="295" y="83" fill="#90CAF9" font-size="10" font-family="sans-serif">Python REST Polling</text>
+
+  <rect x="120" y="98" width="240" height="42" rx="8" fill="#1A237E" opacity="0.85" stroke="#42A5F5" stroke-width="1"/>
+  <text x="240" y="124" fill="#64B5F6" font-size="12" font-family="sans-serif" text-anchor="middle" font-weight="bold">Snowpipe Streaming SDK</text>
+
+  <line x1="240" y1="140" x2="240" y2="175" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="295" y="163" fill="#90CAF9" font-size="10" font-family="sans-serif">append_rows() → VARIANT</text>
+
+  <rect x="50" y="178" width="800" height="65" rx="12" fill="url(#gRaw)" opacity="0.85"/>
+  <text x="100" y="200" fill="white" font-size="14" font-family="sans-serif" font-weight="bold">RAW Layer</text>
+  <text x="100" y="218" fill="#BCAAA4" font-size="11" font-family="sans-serif">RAW_TRADES</text>
+  <text x="250" y="218" fill="#BCAAA4" font-size="11" font-family="sans-serif">RAW_AGGREGATES</text>
+  <text x="420" y="218" fill="#BCAAA4" font-size="11" font-family="sans-serif">RAW_NEWS</text>
+  <text x="100" y="235" fill="#A1887F" font-size="10" font-family="sans-serif">+ Streams (CDC — append-only change tracking)</text>
+
+  <line x1="350" y1="243" x2="350" y2="278" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="400" y="266" fill="#90CAF9" font-size="10" font-family="sans-serif">Dynamic Tables — 1 min lag</text>
+
+  <line x1="660" y1="62" x2="660" y2="278" stroke="#64B5F6" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow)"/>
+  <text x="670" y="175" fill="#90CAF9" font-size="10" font-family="sans-serif">Secure Data Sharing</text>
+
+  <rect x="50" y="281" width="800" height="100" rx="12" fill="url(#gAnalytics)" opacity="0.85"/>
+  <text x="100" y="305" fill="white" font-size="14" font-family="sans-serif" font-weight="bold">ANALYTICS Layer</text>
+  <text x="100" y="325" fill="#B0BEC5" font-size="10.5" font-family="sans-serif">DAILY_OHLCV · DAILY_RETURNS · MOVING_AVERAGES · RSI_14</text>
+  <text x="100" y="343" fill="#B0BEC5" font-size="10.5" font-family="sans-serif">NEWS_FLATTENED · NEWS_SENTIMENT (Cortex CTE)</text>
+  <text x="100" y="361" fill="#B0BEC5" font-size="10.5" font-family="sans-serif">MACRO_CPI · MACRO_TREASURY_10Y · MARKETPLACE_STOCK_PRICES (Mag7+SPY) · MACRO_STOCK_MONTHLY</text>
+
+  <rect x="660" y="298" width="170" height="35" rx="6" fill="#263238" stroke="#4DB6AC" stroke-width="1"/>
+  <text x="745" y="312" fill="#4DB6AC" font-size="10" font-family="sans-serif" text-anchor="middle">DMFs + Cortex LLM</text>
+  <text x="745" y="326" fill="#80CBC4" font-size="9" font-family="sans-serif" text-anchor="middle">Quality Metrics + Sentiment</text>
+
+  <line x1="350" y1="381" x2="350" y2="416" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="400" y="404" fill="#90CAF9" font-size="10" font-family="sans-serif">Dynamic Tables — 1 min to 1 day</text>
+
+  <rect x="50" y="419" width="800" height="75" rx="12" fill="url(#gGold)" opacity="0.85"/>
+  <text x="100" y="443" fill="white" font-size="14" font-family="sans-serif" font-weight="bold">GOLD Layer</text>
+  <text x="100" y="463" fill="#FFF8E1" font-size="10.5" font-family="sans-serif">TICKER_SUMMARY · TICKER_BETA (vs SPY) · SENTIMENT_SUMMARY · SENTIMENT_MOMENTUM · MACRO_OVERVIEW</text>
+  <text x="100" y="481" fill="#FFE082" font-size="10" font-family="sans-serif">Dashboard-ready: 1 table = 1 query</text>
+
+  <rect x="50" y="528" width="800" height="55" rx="12" fill="url(#gCommon)" opacity="0.85"/>
+  <text x="100" y="550" fill="white" font-size="14" font-family="sans-serif" font-weight="bold">COMMON Layer (Monitoring &amp; Logs)</text>
+  <text x="100" y="570" fill="#B0BEC5" font-size="10.5" font-family="sans-serif">Pipeline Logs · Alert Log · Data Quality (SP + Task + DT + Alert) · Tags (Governance)</text>
+
+  <line x1="650" y1="494" x2="650" y2="618" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="250" y1="583" x2="250" y2="618" stroke="#64B5F6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="120" y="621" width="660" height="48" rx="10" fill="url(#gDash)" opacity="0.9"/>
+  <text x="450" y="643" fill="white" font-size="14" font-family="sans-serif" text-anchor="middle" font-weight="bold">Streamlit Dashboard (7 Pages)</text>
+  <text x="450" y="660" fill="#B2DFDB" font-size="11" font-family="sans-serif" text-anchor="middle">Home · Technical Analysis · News &amp; Sentiment · Alerts · Macro · Monitoring · Doc</text>
+</svg>

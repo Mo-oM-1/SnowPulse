@@ -994,7 +994,7 @@ with st.expander("4 — Create a systemd Service"):
     st.code("""
 sudo tee /etc/systemd/system/snowpulse.service > /dev/null <<'EOF'
 [Unit]
-Description=SnowPulse - Near-Real-Time Market Data Streamer
+Description=SnowPulse - Real-Time Market Data Streamer
 After=network.target
 
 [Service]

@@ -1,12 +1,12 @@
-# ⚡ SnowPulse — Real-Time Market Intelligence
+# ⚡ SnowPulse — Near-Real-Time Market Intelligence
 
-> Real-time market intelligence platform for the **Magnificent Seven** (AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META) built 100% on **Snowflake native features**.
+> Near-Real-time market intelligence platform for the **Magnificent Seven** (AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META) built 100% on **Snowflake native features**.
 
 ## 🎯 What This Project Demonstrates
 
 | Snowflake Feature | Usage |
 |---|---|
-| **Snowpipe Streaming** | Real-time ingestion from Massive (Polygon.io) REST API via Python SDK |
+| **Snowpipe Streaming** | Near-Real-time ingestion from Massive (Polygon.io) REST API via Python SDK |
 | **Dynamic Tables** | Declarative transformations with automatic cascade refresh (1 min lag) |
 | **Snowflake Alerts** | Automated market + data quality monitoring |
 | **Cortex LLM** | AI-powered sentiment analysis on financial news (SENTIMENT + SUMMARIZE), CTE-optimized |
